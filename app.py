@@ -58,3 +58,7 @@ def get_repo_info(user, token):
         return jsonify(dt)
     else:
         return jsonify({"error":"Not Found"})
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
