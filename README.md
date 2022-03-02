@@ -11,7 +11,7 @@
         - [Demo](#user_demo)
     - [Repo_metadata](#repo_metadata)
         - [Demo](#Repo_metadata_demo)
-
+    - [Yet to be implemented endpoints](#yet-to-be-implemented-endpoints)
 ## Introduction
 This project creates a **backend API** using **GitHub API** as the source with endpoints for retrieving GitHub account users details and repositories associated with given username. The following information is returned by user and repo metadata endpoints respectively:
 <ul>
@@ -163,4 +163,8 @@ Response:
   }, ...
 }
 ```
+## Yet to be implemented endpoints
 
+As this is a work in progress, there are endpoints yet to be added examples are:
+- Endpoint for repository code analysis
+- Endpoints for code analysis pertaining to specific languages like **Python** and **JavaScript**
