@@ -1,6 +1,6 @@
 import os, sys
 import json
-from flask import Flask, jsonify
+from flask import jsonify
 import requests
 
 
