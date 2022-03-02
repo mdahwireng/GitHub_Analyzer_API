@@ -10,7 +10,7 @@
     - [User](##user)
         - [Demo](###user_demo)
     - [Repo_metadata](##repo_metadata)
-        [Demo](###Repo_metadata_demo)
+        - [Demo](###Repo_metadata_demo)
 
 ## Introduction
 This project creates a **backend API** using **GitHub API** as the source with endpoints for retrieving GitHub account users details and repositories associated with given username. The following information is returned by user and repo metadata endpoints respectively:
