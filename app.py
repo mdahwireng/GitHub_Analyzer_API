@@ -1,13 +1,27 @@
+import json
 from flask import Flask, jsonify
 import requests
 
 app = Flask(__name__)
 
 @app.route('/user/<string:user>/<string:token>',methods=["GET"])
-def get_user(user, token):
+def get_user(user, token)->json:
+    """
+    Takes username and github generated token and returns json on user acount details
+
+    Args:
+        user(str): github account username
+        token(str): github account token
+
+    Returns:
+        json of accounts details
+    """
+    # create authourization headers for get request
     headers = {"Authorization":"Bearer {}".format(token)}
+    # send get request to github api
     resp = requests.get('https://api.github.com/users/{}'.format(user), headers=headers)
     if resp.status_code == 200:
+        # retrive response body
         d = resp.json()
         info_list = ['name', 'email', 'bio','followers', 'following']
         dt = {k:d[k] for k in info_list}
