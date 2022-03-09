@@ -92,5 +92,80 @@ def get_repo_meta(user, token)->json:
         return jsonify({"error":"Not Found"})
 
 
+
+@app.route('/repos_python/<string:user>/<string:token>',methods=["GET"])
+def get_repo_python(user, token)->json:
+    """
+    Takes username and github generated token and returns json of details on the python codes in each repository
+
+    Args:
+        user(str): github account username
+        token(str): github account token
+
+    Returns:
+        json of details on the python codes in each repository 
+    """
+    # create authourization headers for get request
+    headers = {"Authorization":"Bearer {}".format(token)}
+    # send get request to github api
+    resp = requests.get('https://api.github.com/users/{}/repos'.format(user), headers=headers)
+    if resp.status_code == 200:
+        # retrive response body
+        repo_file_dict = {}
+        d = resp.json()
+
+        # create function for separting python files from directories
+        def separate_files_and_dir(resp):
+            ext_list = ["py", "ipynb"]
+            file_list = []
+            dir_list = []
+            # loop through response to separate files and folders
+            for content in resp:
+                if content["type"] == "file":
+                    file_name = content["name"].lower()
+                    ext = ""
+                    for i in range(file_name.count('.')):
+                        if i == 0:
+                            ext = file_name.split('.')[-1]
+                        else:
+                            ext = ext.split('.')[-1]
+                        
+                        if i + 1 == file_name.count('.'):
+                            if ext in ext_list:
+                                file_list.append(content)
+            
+            if content["type"] == "dir":
+                dir_list.append(content)
+
+            return file_list, dir_list
+
+    for repo in d:
+        repo_resp = requests.get("https://api.github.com/repos/mdahwireng/{}/contents".format(repo["name"]), headers=headers)
+        json_repo_resp = repo_resp.json()
+        
+        if repo_resp.status_code == 200:
+            file_list, dir_list = separate_files_and_dir(json_repo_resp)
+
+            while len(dir_list) != 0:
+                loop_list = dir_list.copy()
+                
+                for dir in loop_list:
+                    resp_ = requests.get(dir["url"], headers=headers)
+                    if resp_.status_code == 200:
+                        # retrive response body
+                        d = resp_.json()
+                        sep_tup = separate_files_and_dir(d)
+                        file_list.extend(sep_tup[0])
+                        dir_list.extend(sep_tup[1])
+                        dir_list.remove(dir)
+        
+            repo_file_dict[repo["name"]] = {"files":file_list, "dir":dir_list}
+            return jsonify(repo_file_dict)
+        else:
+            return jsonify({"error":"Not Found"}) 
+         
+        
+    
+
 if __name__ == "__main__":
     app.run(debug=True)
