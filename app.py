@@ -132,6 +132,7 @@ def get_repo_python(user, token)->json:
                         
                         if i + 1 == file_name.count('.'):
                             if ext in ext_list:
+                                content["extention"] = ext
                                 file_list.append(content)
             
             if content["type"] == "dir":
