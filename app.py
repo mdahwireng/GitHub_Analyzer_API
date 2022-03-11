@@ -71,6 +71,7 @@ def get_repo_meta(user, token)->json:
             # Retrieve commit activity details
             commit_url = "https://api.github.com/repos/{}/{}/stats/commit_activity".format(user,repo)
             commits = requests.get(commit_url, headers=headers).json()
+            print('\n',commits,'\n')
             dt[repo]["total_commits"] = sum([c["total"] for c in commits])
 
             # Retrieve contributors details
@@ -116,27 +117,21 @@ def get_repo_python(user, token)->json:
 
         # create function for separting python files from directories
         def separate_files_and_dir(resp):
-            ext_list = ["py", "ipynb"]
+            ext_list = [".py", ".ipynb"]
             file_list = []
             dir_list = []
             # loop through response to separate files and folders
             for content in resp:
                 if content["type"] == "file":
                     file_name = content["name"].lower()
-                    ext = ""
-                    for i in range(file_name.count('.')):
-                        if i == 0:
-                            ext = file_name.split('.')[-1]
-                        else:
-                            ext = ext.split('.')[-1]
-                        
-                        if i + 1 == file_name.count('.'):
-                            if ext in ext_list:
-                                content["extention"] = ext
-                                file_list.append(content)
+
+                    if True in [file_name.endswith(t) for t in ext_list]:
+                        print('\n',True,'\n')
+                        file_list.append(content)
+                                
             
-            if content["type"] == "dir":
-                dir_list.append(content)
+                if content["type"] == "dir":
+                    dir_list.append(content)
 
             return file_list, dir_list
 
@@ -160,10 +155,12 @@ def get_repo_python(user, token)->json:
                         dir_list.extend(sep_tup[1])
                         dir_list.remove(dir)
         
-            repo_file_dict[repo["name"]] = {"files":file_list, "dir":dir_list}
-            return jsonify(repo_file_dict)
+            repo_file_dict[repo["name"]] = file_list
+            
         else:
-            return jsonify({"error":"Not Found"}) 
+            return jsonify({"error":"Not Found"})
+
+    return jsonify(repo_file_dict)
          
         
     
