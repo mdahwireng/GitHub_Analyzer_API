@@ -126,7 +126,6 @@ def get_repo_python(user, token)->json:
                     file_name = content["name"].lower()
 
                     if True in [file_name.endswith(t) for t in ext_list]:
-                        print('\n',True,'\n')
                         file_list.append(content)
                                 
             
