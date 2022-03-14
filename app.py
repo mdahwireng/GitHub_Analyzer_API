@@ -103,7 +103,7 @@ def get_single_repo_meta(user, token, repo_name)->json:
         repo_name(str): github repository name
 
     Returns:
-        json of details of each repository 
+        json of details of repository 
     """
     # create authourization headers for get request
     headers = {"Authorization":"Bearer {}".format(token)}
@@ -132,7 +132,9 @@ def get_single_repo_meta(user, token, repo_name)->json:
             # Retrieve commit activity details
             commit_url = "https://api.github.com/repos/{}/{}/stats/commit_activity".format(user,repo)
             commits = requests.get(commit_url, headers=headers).json()
-            dt[repo]["total_commits"] = sum([c["total"] for c in commits])
+            dt[repo]["commits"] = {"total_commits" : sum([c["total"] for c in commits])}
+            dt[repo]["commits"]["previous_week"] = commits[-2]["total"]
+            dt[repo]["commits"]["current_week"] = commits[-1]["total"]
 
             # Retrieve contributors details
             contributors_url = "https://api.github.com/repos/{}/{}/contributors".format(user,repo)
