@@ -64,7 +64,7 @@ def get_repo_meta(user, token)->json:
             dt[repo]["languages"] = lang_list[:3]
 
             # Retrieve branches details
-            branches_url = "https://api.github.com/repos/{}/{}/branches"
+            branches_url = "https://api.github.com/repos/{}/{}/branches".format(user,repo)
             branches = len(requests.get(branches_url, headers=headers).json())
             dt[repo]["branches"] = branches
 
@@ -125,7 +125,7 @@ def get_single_repo_meta(user, token, repo_name)->json:
             dt[repo]["languages"] = lang_list[:3]
 
             # Retrieve branches details
-            branches_url = "https://api.github.com/repos/{}/{}/branches"
+            branches_url = "https://api.github.com/repos/{}/{}/branches".format(user,repo)
             branches = len(requests.get(branches_url, headers=headers).json())
             dt[repo]["branches"] = branches
 
