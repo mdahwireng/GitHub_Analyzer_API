@@ -229,6 +229,7 @@ def get_single_repo_pyanalysis(user, token, repo_name)->json:
                             universal_newlines=True)
                         stdout, stderr = process.communicate()
                         
+                        # if there is no error
                         if process.returncode == 0:
                             analysis_results[k] = json.loads(stdout.strip())
                         else:
