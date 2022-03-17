@@ -196,7 +196,7 @@ def get_single_repo_pyanalysis(user, token, repo_name)->json:
                 clone_url = repo_details[0]["clone_url"]
 
                 # dir for cloned repos
-                tmp_dir = "./tmp"
+                tmp_dir = "tmp"
 
                 # dir for named repo
                 repo_path = "{}/{}".format(tmp_dir, repo_name)
@@ -218,11 +218,69 @@ def get_single_repo_pyanalysis(user, token, repo_name)->json:
 
                 # if there is no error
                 if process.returncode == 0:
+
+                   
+                    # find the diffs and save them 
+                    os.chdir("tmp/GitHub_Analyzer_API")
+
+                    # function here
+                    py_files = [(os.path.join(root, fn), os.path.join(root, "changed_"+fn)) for root, _, files in os.walk(".", topdown=False) 
+                                for fn in files if fn.endswith(".py")]
+
+                    commit_sha = []
+
+                    for tup in py_files:
+
+                        # function here
+                        process = subprocess.Popen(["git", "log", "--follow", tup[0]],
+                                                    stdout=subprocess.PIPE, 
+                                                    stderr=subprocess.PIPE,
+                                                    universal_newlines=True)
+
+                        stdout, stderr = process.communicate()
+
+                        # function here
+                        lines = stdout.split("\n")
+                        stdout = [i.split(" ")[1] for i in lines if i.startswith("commit")]
+                        
+                        if len(stdout) > 2:
+                            commit_sha.append((stdout[-1], stdout[0]))
+                        else:
+                            commit_sha.append((stdout[0], stdout[0]))
+                    
+                    additions_dict = dict()
+                    for tup in zip(py_files, commit_sha):
+                        # function here
+                        process = subprocess.Popen(["git", "diff", tup[1][0], 
+                                                    tup[1][1], "--", tup[0][0]],
+                                                    stdout=subprocess.PIPE, 
+                                                    stderr=subprocess.PIPE,
+                                                    universal_newlines=True)
+
+                        stdout, stderr = process.communicate()
+
+
+                        # function here
+                        lines = stdout.split("\n")
+                        
+                        additions = lines[4].split(" ")[2][1:].replace("+","")
+                        if "," in additions:
+                            additions = additions.replace(",","")
+                        
+                        additions_dict[tup[0][0]] = int(additions)
+                        stdout = [i[1:] for i in lines[4:] if i.startswith("+")]
+
+                        # function here 
+                        with open(tup[0][1], "w") as f:
+                            f.write("\n".join(stdout))
+                    
+
+
                     analysis_dict = {"cyclomatic_complexity":"cc", "raw_metrics":"raw", "maintainability_index":"mi"}
                     analysis_results = {}
                     for k,v in analysis_dict.items():
 
-                        process = subprocess.Popen(["radon", v, repo_path, "-s", "-j"],
+                        process = subprocess.Popen(["radon", v, "./", "-s", "-j"],
                             stdout=subprocess.PIPE, 
                             stderr=subprocess.PIPE,
                             universal_newlines=True)
@@ -235,9 +293,10 @@ def get_single_repo_pyanalysis(user, token, repo_name)->json:
                              analysis_results[k] = json.loads(stderr.strip())
                     
                     # delete tmp_dir after checking code metrics
-                    shutil.rmtree(repo_path)
+                    os.chdir("../")
+                    shutil.rmtree(repo_path.split("/")[1])
 
-                    return jsonify(analysis_results)
+                    return jsonify({"analysis_results":analysis_results, "commit_additions":additions_dict})
 
                     
                 else:
