@@ -201,13 +201,12 @@ def get_single_repo_pyanalysis(user, token, repo_name)->json:
                 # dir for named repo
                 repo_path = "{}/{}".format(tmp_dir, repo_name)
                 
+                if not os.path.exists(tmp_dir):
+                    os.mkdir(tmp_dir)
+
                 if os.path.exists(repo_path):
-                    shutil.rmtree(tmp_dir)
+                    shutil.rmtree(repo_path)
 
-                if os.path.exists(tmp_dir):
-                    shutil.rmtree(tmp_dir)
-
-                os.mkdir(tmp_dir)
                 os.mkdir(repo_path)
 
                 # run cmd process to clone repo
@@ -236,7 +235,7 @@ def get_single_repo_pyanalysis(user, token, repo_name)->json:
                              analysis_results[k] = json.loads(stderr.strip())
                     
                     # delete tmp_dir after checking code metrics
-                    shutil.rmtree(tmp_dir)
+                    shutil.rmtree(repo_path)
 
                     return jsonify(analysis_results)
 
