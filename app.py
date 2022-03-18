@@ -1,9 +1,19 @@
 import json
-from flask import Flask, jsonify
-import requests
 import os
-import subprocess
 import shutil
+import sys
+
+import requests
+from flask import Flask, jsonify
+
+curdir = os.path.dirname(os.path.realpath(__file__))
+cpath = os.path.dirname(curdir)
+if not cpath in sys.path:
+    sys.path.append(cpath)
+
+from modules.utils import check_lang_exit, retriev_files, retrieve_diff_details, retrieve_init_last_commit_sha, retrieve_repo_meta, run_cmd_process, save_file, send_get_req
+
+
 
 app = Flask(__name__)
 
@@ -22,8 +32,8 @@ def get_user(user, token)->json:
     # create authourization headers for get request
     headers = {"Authorization":"Bearer {}".format(token)}
     # send get request to github api
-    resp = requests.get('https://api.github.com/users/{}'.format(user), headers=headers)
-    if resp.status_code == 200:
+    resp, resp_status_code = send_get_req(_url='https://api.github.com/users/{}'.format(user), _header=headers)
+    if resp_status_code == 200:
         # retrive response body
         d = resp.json()
         info_list = ['name', 'email', 'bio','followers', 'following']
@@ -50,46 +60,13 @@ def get_repo_meta(user, token)->json:
     # create authourization headers for get request
     headers = {"Authorization":"Bearer {}".format(token)}
     # send get request to github api
-    resp = requests.get('https://api.github.com/users/{}/repos'.format(user), headers=headers)
-    if resp.status_code == 200:
+    resp, resp_status_code = send_get_req(_url='https://api.github.com/users/{}/repos'.format(user), _header=headers)
+    if resp_status_code == 200:
         # retrive response body
         d = resp.json()
         info_list = ["forks", "languages_url", "contributors_url", "branches_url"]
-        dt = {repo["name"]:{k:repo[k] for k in info_list} for repo in d}
-        for repo in dt.keys():
-            # Retrieve language details
-            languages_url = "https://api.github.com/repos/{}/{}/languages".format(user,repo)
-            languages = requests.get(languages_url, headers=headers).json()
-            total_contribs = sum([languages[l] for l in languages])
-            lang_list = [(l, float("{:.2f}".format(languages[l]/total_contribs * 100))) \
-                                for l in languages]
-            lang_list.sort(key=lambda x:x[1], reverse=True)
-            dt[repo]["languages"] = lang_list[:3]
-
-            # Retrieve branches details
-            branches_url = "https://api.github.com/repos/{}/{}/branches".format(user,repo)
-            branches = len(requests.get(branches_url, headers=headers).json())
-            dt[repo]["branches"] = branches
-
-            # Retrieve commit activity details
-            commit_url = "https://api.github.com/repos/{}/{}/stats/commit_activity".format(user,repo)
-            commits = requests.get(commit_url, headers=headers).json()
-            dt[repo]["total_commits"] = sum([c["total"] for c in commits])
-
-            # Retrieve contributors details
-            contributors_url = "https://api.github.com/repos/{}/{}/contributors".format(user,repo)
-            contributors = requests.get(contributors_url, headers=headers).json()
-            dt[repo]["contributors"] = [c["login"] for c in contributors]
-
-            # Retrieve clones details
-            clone_url = "https://api.github.com/repos/{}/{}/traffic/clones".format(user,repo)
-            clones = requests.get(clone_url, headers=headers).json()
-            dt[repo]["clones"] = {"count": clones["count"], "uniques": clones["uniques"]}
-            
-            # Retrieve views(visitors) details
-            views_url =" https://api.github.com/repos/{}/{}/traffic/views".format(user,repo)
-            views = requests.get(views_url, headers=headers).json()
-            dt[repo]["visitors"] = {"uniques": views["uniques"], "count": views["count"]}
+        resp_dict = {repo["name"]:{k:repo[k] for k in info_list} for repo in d}
+        dt = retrieve_repo_meta(resp_json=resp_dict, headers=headers, user=user)
         return jsonify(dt)
     else:
         return jsonify({"error":"Not Found"})
@@ -115,48 +92,13 @@ def get_single_repo_meta(user, token, repo_name)->json:
     # create authourization headers for get request
     headers = {"Authorization":"Bearer {}".format(token)}
     # send get request to github api
-    resp = requests.get('https://api.github.com/users/{}/repos'.format(user), headers=headers)
-    if resp.status_code == 200:
+    resp, resp_status_code = send_get_req(_url='https://api.github.com/users/{}/repos'.format(user), _header=headers)
+    if resp_status_code == 200:
         # retrive response body
         d = resp.json()
         info_list = ["forks", "languages_url", "contributors_url", "branches_url"]
-        dt = {repo["name"]:{k:repo[k] for k in info_list} for repo in d if repo["name"]==repo_name}
-        for repo in dt.keys():
-            # Retrieve language details
-            languages_url = "https://api.github.com/repos/{}/{}/languages".format(user,repo)
-            languages = requests.get(languages_url, headers=headers).json()
-            total_contribs = sum([languages[l] for l in languages])
-            lang_list = [(l, float("{:.2f}".format(languages[l]/total_contribs * 100))) \
-                                for l in languages]
-            lang_list.sort(key=lambda x:x[1], reverse=True)
-            dt[repo]["languages"] = lang_list[:3]
-
-            # Retrieve branches details
-            branches_url = "https://api.github.com/repos/{}/{}/branches".format(user,repo)
-            branches = len(requests.get(branches_url, headers=headers).json())
-            dt[repo]["branches"] = branches
-
-            # Retrieve commit activity details
-            commit_url = "https://api.github.com/repos/{}/{}/stats/commit_activity".format(user,repo)
-            commits = requests.get(commit_url, headers=headers).json()
-            dt[repo]["commits"] = {"total_commits" : sum([c["total"] for c in commits])}
-            dt[repo]["commits"]["previous_week"] = commits[-2]["total"]
-            dt[repo]["commits"]["current_week"] = commits[-1]["total"]
-
-            # Retrieve contributors details
-            contributors_url = "https://api.github.com/repos/{}/{}/contributors".format(user,repo)
-            contributors = requests.get(contributors_url, headers=headers).json()
-            dt[repo]["contributors"] = [c["login"] for c in contributors]
-
-            # Retrieve clones details
-            clone_url = "https://api.github.com/repos/{}/{}/traffic/clones".format(user,repo)
-            clones = requests.get(clone_url, headers=headers).json()
-            dt[repo]["clones"] = {"count": clones["count"], "uniques": clones["uniques"]}
-            
-            # Retrieve views(visitors) details
-            views_url =" https://api.github.com/repos/{}/{}/traffic/views".format(user,repo)
-            views = requests.get(views_url, headers=headers).json()
-            dt[repo]["visitors"] = {"uniques": views["uniques"], "count": views["count"]}
+        resp_dict = {repo["name"]:{k:repo[k] for k in info_list} for repo in d if repo["name"]==repo_name}
+        dt = retrieve_repo_meta(resp_json=resp_dict, headers=headers, user=user)
         return jsonify(dt)
     else:
         return jsonify({"error":"Not Found"})
@@ -190,7 +132,7 @@ def get_single_repo_pyanalysis(user, token, repo_name)->json:
         if repo_details:
             
             # check if the repo contains python files
-            if "Python" in repo_details[0]["language"]:
+            if  check_lang_exit(repo_dict=repo_details[0], language="Python"):
 
                 # retrieve clone url
                 clone_url = repo_details[0]["clone_url"]
@@ -210,69 +152,38 @@ def get_single_repo_pyanalysis(user, token, repo_name)->json:
                 os.mkdir(repo_path)
 
                 # run cmd process to clone repo
-                process = subprocess.Popen(["git", "clone", clone_url, repo_path],
-                     stdout=subprocess.PIPE, 
-                     stderr=subprocess.PIPE,
-                     universal_newlines=True)
-                stdout, stderr = process.communicate()
+                stdout, stderr, return_code = run_cmd_process(cmd_list = ["git", "clone", clone_url, repo_path])
 
                 # if there is no error
-                if process.returncode == 0:
+                if return_code == 0:
 
-                   
                     # find the diffs and save them 
                     os.chdir("tmp/GitHub_Analyzer_API")
 
-                    # function here
-                    py_files = [(os.path.join(root, fn), os.path.join(root, "changed_"+fn)) for root, _, files in os.walk(".", topdown=False) 
-                                for fn in files if fn.endswith(".py")]
-
+                    # rerieve langage files
+                    py_files = retriev_files(path=".", file_ext=".py")
+                    
                     commit_sha = []
 
                     for tup in py_files:
 
-                        # function here
-                        process = subprocess.Popen(["git", "log", "--follow", tup[0]],
-                                                    stdout=subprocess.PIPE, 
-                                                    stderr=subprocess.PIPE,
-                                                    universal_newlines=True)
+                        stdout, stderr, _ =  run_cmd_process(cmd_list=["git", "log", "--follow", tup[0]])
 
-                        stdout, stderr = process.communicate()
+                        # retrieve the first and current commit shas
+                        commit_sha.append(retrieve_init_last_commit_sha(stdout))
 
-                        # function here
-                        lines = stdout.split("\n")
-                        stdout = [i.split(" ")[1] for i in lines if i.startswith("commit")]
-                        
-                        if len(stdout) > 2:
-                            commit_sha.append((stdout[-1], stdout[0]))
-                        else:
-                            commit_sha.append((stdout[0], stdout[0]))
-                    
                     additions_dict = dict()
                     for tup in zip(py_files, commit_sha):
-                        # function here
-                        process = subprocess.Popen(["git", "diff", tup[1][0], 
-                                                    tup[1][1], "--", tup[0][0]],
-                                                    stdout=subprocess.PIPE, 
-                                                    stderr=subprocess.PIPE,
-                                                    universal_newlines=True)
-
-                        stdout, stderr = process.communicate()
-
-
-                        # function here
-                        lines = stdout.split("\n")
                         
-                        additions = lines[4].split(" ")[2][1:].replace("+","")
-                        if "," in additions:
-                            additions = additions.replace(",","")
-                        
-                        additions_dict[tup[0][0]] = int(additions)
-                        stdout = [i[1:] for i in lines[4:] if i.startswith("+")]
+                        # run git diff from the retrieved shas
+                        stdout, stderr, _ = run_cmd_process(cmd_list=["git", "diff", tup[1][0], tup[1][1], "--", tup[0][0]])
 
-                        # function here 
-                        with open(tup[0][1], "w") as f:
-                            f.write("\n".join(stdout))
+                        # retrieve diff details
+                        additions, content = retrieve_diff_details(stdout)
+                        additions_dict[tup[0][0]] = additions
+
+                        # save changes made to file temporaily for analysis
+                        save_file(file_name=tup[0][1], content=content)
                     
 
 
@@ -280,14 +191,11 @@ def get_single_repo_pyanalysis(user, token, repo_name)->json:
                     analysis_results = {}
                     for k,v in analysis_dict.items():
 
-                        process = subprocess.Popen(["radon", v, "./", "-s", "-j"],
-                            stdout=subprocess.PIPE, 
-                            stderr=subprocess.PIPE,
-                            universal_newlines=True)
-                        stdout, stderr = process.communicate()
+                        # run radon code analysis
+                        stdout, stderr, return_code = run_cmd_process(cmd_list=["radon", v, "./", "-s", "-j"])
                         
                         # if there is no error
-                        if process.returncode == 0:
+                        if return_code == 0:
                             analysis_results[k] = json.loads(stdout.strip())
                         else:
                              analysis_results[k] = json.loads(stderr.strip())
@@ -303,10 +211,10 @@ def get_single_repo_pyanalysis(user, token, repo_name)->json:
                     return jsonify({"error" : stderr})
 
             else:
-                jsonify({"error":"repository does not contain python files"})
+                return jsonify({"error":"repository does not contain python files"})
 
         else:
-            jsonify({"error":"repository not found"})
+            return jsonify({"error":"repository not found"})
     
     else:
         return jsonify({"error":"Not Found"})
