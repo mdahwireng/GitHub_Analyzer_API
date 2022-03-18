@@ -122,3 +122,25 @@ def retrieve_contributors(user, repo, headers) -> list:
     
 
 
+def retrieve_clone_details(user, repo, headers) -> dict:
+    """
+    Retrieves the counts and unique counts of the clones of a github repository. 
+    Returns dictionary of clone details
+
+    Args:
+        user(str): github username
+        repo(str): name of repo to retrieve meta data from
+        headers(dict): header to attach to the request
+
+    Returns:
+        dictionary of clone details
+    """
+
+    clone_url = "https://api.github.com/repos/{}/{}/traffic/clones".format(user,repo)
+    clones = send_get_req(_url=clone_url, _header=headers)[0].json()
+    
+    # retrieve and return the dictionary of clone details
+    return {"count": clones["count"], "uniques": clones["uniques"]}
+
+
+
