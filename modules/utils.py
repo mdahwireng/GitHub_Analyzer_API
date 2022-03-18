@@ -98,3 +98,27 @@ def retrieve_num_commits(user, repo, headers) -> int:
     # retrieve and return the total number of commits
     return sum([c["total"] for c in commits])
     
+
+def retrieve_contributors(user, repo, headers) -> list:
+    """
+    Retrieves the github usernames of all contributors to a github repository. 
+    Returns list of contributors
+
+    Args:
+        user(str): github username
+        repo(str): name of repo to retrieve meta data from
+        headers(dict): header to attach to the request
+
+    Returns:
+        list of contributors
+    """
+
+    contributors_url = "https://api.github.com/repos/{}/{}/contributors".format(user,repo)
+    contributors = send_get_req(_url=contributors_url, _header=headers)[0].json()
+    
+    # retrieve and return the list of contributors
+    return [c["login"] for c in contributors]
+
+    
+
+
