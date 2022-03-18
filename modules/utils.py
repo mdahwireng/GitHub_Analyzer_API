@@ -222,3 +222,27 @@ def check_lang_exit(repo_dict, language) -> bool:
 
 
 
+def run_cmd_process(cmd_list) -> tuple:
+    """
+    Takes a list of elements of a shell command and executes the command
+    Returns a tuple of the output, error and return code of the process.
+
+    Args:
+        cmd_list(list): list of elements of the shell command
+
+    Returns:
+        A tuple of the output, error and return code of the process
+    """
+
+    process = subprocess.Popen(cmd_list,
+                     stdout=subprocess.PIPE, 
+                     stderr=subprocess.PIPE,
+                     universal_newlines=True)
+    
+    # retrieve the output and error
+    stdout, stderr = process.communicate()
+
+    return stdout, stderr, process.returncode
+
+
+
