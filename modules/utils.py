@@ -268,3 +268,31 @@ def retriev_files(path, file_ext) -> list:
 
 
 
+def retrieve_init_last_commit_sha(stdout) -> tuple:
+    """
+    Takes the out put from a git diff cmd process and retrieves the additions 
+    and the content of the changed files
+
+    Args:
+        stdout: out put from a git diff cmd process
+
+    Returns:
+        A tuples the first and the most current commit shas
+    """
+
+    # split the output into lines
+    lines = stdout.split("\n")
+
+    # retrieve all the commit shas
+    sha_lines = [i.split(" ")[1] for i in lines if i.startswith("commit")]
+    if len(sha_lines) > 2:
+        # return the first and the most current
+        return (sha_lines[-1], sha_lines[0])
+    else:
+        # return the only sha in both index 0 and 1
+        return (sha_lines[0], sha_lines[0])
+
+    
+
+
+
