@@ -57,3 +57,22 @@ def retrieve_topk_langs(user, repo, headers, topk=3) -> list:
 
 
 
+def retrieve_num_branches(user, repo, headers) -> int:
+    """
+    Retrieves the number of branches in a github repository. 
+    Returns integer of the number of branches
+
+    Args:
+        user(str): github username
+        repo(str): name of repo to retrieve meta data from
+        headers(dict): header to attach to the request
+
+    Returns:
+        integer of the number of branches
+    """
+
+    branches_url = "https://api.github.com/repos/{}/{}/branches".format(user,repo)
+
+    # retrieve number of branches and return the value
+    return len(send_get_req(_url=branches_url, _header=headers)[0].json())
+ 
