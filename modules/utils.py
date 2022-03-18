@@ -320,5 +320,18 @@ def retrieve_diff_details(stdout) -> tuple:
     return int(additions), [i[1:] for i in lines[4:] if i.startswith("+")]
 
 
+def save_file(file_name, content) -> None:
+    """
+    Takes a filename and content. Then writes the content to an opened file and save it 
+    with the filename given
 
+    Args:
+        file_name(str): file name to save the content with
+        content(list): list of content with each line as an element
+
+    Returns:
+        None
+    """
+    with open(file_name, "w") as f:
+        f.write("\n".join(content))
  
