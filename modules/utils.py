@@ -144,3 +144,26 @@ def retrieve_clone_details(user, repo, headers) -> dict:
 
 
 
+def retrieve_views_details(user, repo, headers) -> dict:
+    """
+    Retrieves the counts and unique counts of the views of a github repository. 
+    Returns dictionary of clone details
+
+    Args:
+        user(str): github username
+        repo_name(str): name of repo to retrieve meta data from
+        headers(dict): header to attach to the request
+
+    Returns:
+        dictionary of clone details
+    """
+
+    views_url =" https://api.github.com/repos/{}/{}/traffic/views".format(user,repo)
+    views = send_get_req(_url=views_url, _header=headers)[0].json()
+    
+    # retrieve and return the dictionary of view details
+    return {"uniques": views["uniques"], "count": views["count"]}
+
+
+
+
