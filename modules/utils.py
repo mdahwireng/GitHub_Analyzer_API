@@ -246,3 +246,25 @@ def run_cmd_process(cmd_list) -> tuple:
 
 
 
+def retriev_files(path, file_ext) -> list:
+    """
+    Takes the path to the directory where search is to be done recursively and 
+    the file extention of files to look for
+    Returns a list of tuples of the relative path of language files , relative path of 
+    language files with filenames prefixed with changed
+
+    Args:
+        path(str): path to the directory where search is to be done recursively
+        file_ext(str): file extention of files to look for with the "." included
+                        example ".py"
+
+    Returns:
+        A list of tuples of the relative path of language files , relative path of language files 
+        with filenames prefixed with changed
+    """
+    return [(os.path.join(root, fn), os.path.join(root, "changed_"+fn)) 
+            for root, _, files in os.walk(path, topdown=False) 
+            for fn in files if fn.endswith(file_ext)]
+
+
+
