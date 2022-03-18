@@ -167,3 +167,40 @@ def retrieve_views_details(user, repo, headers) -> dict:
 
 
 
+def retrieve_repo_meta(resp_json, headers, user) -> dict:
+    """
+    Retrieves repo meta data from response json and returns a dictionary of the details
+
+    Args:
+        resp_json(json): url to send the request to
+        headers(dict): header to attach to the request
+        user(str): github username
+
+    Returns:
+        dictionary of the details
+    """
+    dt = resp_json
+    for repo in dt.keys():
+
+        # Retrieve language details
+        dt[repo]["languages"] = retrieve_topk_langs(user, repo, headers, topk=3)
+
+        # Retrieve branches details
+        dt[repo]["branches"] = retrieve_num_branches(user, repo, headers)
+
+        # Retrieve commit activity details
+        dt[repo]["total_commits"] = retrieve_num_commits(user, repo, headers)
+
+        # Retrieve contributors details
+        dt[repo]["contributors"] = retrieve_contributors(user, repo, headers)
+
+        # Retrieve clones details
+        dt[repo]["clones"] = retrieve_clone_details(user, repo, headers)
+        
+        # Retrieve views(visitors) details
+        dt[repo]["visitors"] = retrieve_views_details(user, repo, headers)
+
+    return dt
+
+
+
