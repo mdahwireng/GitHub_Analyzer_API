@@ -204,3 +204,21 @@ def retrieve_repo_meta(resp_json, headers, user) -> dict:
 
 
 
+def check_lang_exit(repo_dict, language) -> bool:
+    """
+    Takes a dictionary of repository details and name of language files.
+    Returns a boolean to indicate if language file is present in repository.
+
+    Args:
+        repo_dict(dict): dictionary or reponse with repository details
+        language(str): name of language
+
+    Returns:
+        A boolean to indicate if language file is present in repository
+    """
+    
+    return language in repo_dict["language"]
+
+
+
+
