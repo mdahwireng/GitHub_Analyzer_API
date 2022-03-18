@@ -75,4 +75,26 @@ def retrieve_num_branches(user, repo, headers) -> int:
 
     # retrieve number of branches and return the value
     return len(send_get_req(_url=branches_url, _header=headers)[0].json())
- 
+   
+
+
+def retrieve_num_commits(user, repo, headers) -> int:
+    """
+    Retrieves the number of commits in a github repository. 
+    Returns integer of the number of commits
+
+    Args:
+        user(str): github username
+        repo(str): name of repo to retrieve meta data from
+        headers(dict): header to attach to the request
+
+    Returns:
+        integer of the number of commits
+    """
+
+    commit_url = "https://api.github.com/repos/{}/{}/stats/commit_activity".format(user,repo)
+    commits = send_get_req(_url=commit_url, _header=headers)[0].json()
+    
+    # retrieve and return the total number of commits
+    return sum([c["total"] for c in commits])
+    
