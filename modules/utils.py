@@ -296,3 +296,29 @@ def retrieve_init_last_commit_sha(stdout) -> tuple:
 
 
 
+def retrieve_diff_details(stdout) -> tuple:
+    """
+    Takes the out put from a git log cmd process and retrieves the first and the most current commit shas
+
+    Args:
+        stdout: out put from a git log cmd process
+
+    Returns:
+        A tuples the additions and the contents that has been added
+    """
+
+    # split the output into lines
+    lines = stdout.split("\n")
+
+    # retireve additions from line with addition details                    
+    additions = lines[4].split(" ")[2][1:].replace("+","")
+    
+    # replace commas in additions quantity
+    if "," in additions:
+        additions = additions.replace(",","")
+
+    return int(additions), [i[1:] for i in lines[4:] if i.startswith("+")]
+
+
+
+ 
