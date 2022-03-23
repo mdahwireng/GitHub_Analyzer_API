@@ -165,7 +165,7 @@ def get_single_repo_pyanalysis(user, token, repo_name)->json:
 @app.route('/single_repos_jsanalysis/<string:user>/<string:token>/<string:repo_name>',methods=["GET"])
 def get_single_repo_jsanalysis(user, token, repo_name)->json:
     """
-    Takes username, github generated token and name of repo and returns json of details of javascript code analis in 
+    Takes username, github generated token and name of repo and returns json of details of javascript code analysis in 
     repository
 
     Args:
