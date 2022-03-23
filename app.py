@@ -11,7 +11,7 @@ cpath = os.path.dirname(curdir)
 if not cpath in sys.path:
     sys.path.append(cpath)
 
-from modules.utils import check_lang_exit, retriev_files, retrieve_diff_details, retrieve_init_last_commit_sha, retrieve_repo_meta, run_cmd_process, save_file, send_get_req
+from modules.utils import check_lang_exit, clone_repo, create_repo_dir, get_additions_and_save_contents, retriev_files, retrieve_diff_details, retrieve_init_last_commit_sha, retrieve_repo_meta, run_cmd_process, run_jsanalysis, run_pyanalysis, run_to_get_adds_and_save_content, save_file, send_get_req
 
 
 
@@ -130,88 +130,29 @@ def get_single_repo_pyanalysis(user, token, repo_name)->json:
         repo_details = [repo for repo in d if repo["name"]==repo_name]
         
         if repo_details:
+            lang_list = ["Python"]
             
             # check if the repo contains python files
-            if  check_lang_exit(repo_dict=repo_details[0], language="Python"):
+            if  check_lang_exit(user=user, repo=repo_name, headers=headers, lang_list=lang_list):
 
-                # retrieve clone url
-                clone_url = repo_details[0]["clone_url"]
-
-                # dir for cloned repos
-                tmp_dir = "tmp"
-
-                # dir for named repo
-                repo_path = "{}/{}".format(tmp_dir, repo_name)
-                
-                if not os.path.exists(tmp_dir):
-                    os.mkdir(tmp_dir)
-
-                if os.path.exists(repo_path):
-                    shutil.rmtree(repo_path)
-
-                os.mkdir(repo_path)
-
-                # run cmd process to clone repo
-                stdout, stderr, return_code = run_cmd_process(cmd_list = ["git", "clone", clone_url, repo_path])
+                stderr, return_code, additions_dict, _ = run_to_get_adds_and_save_content(repo_name, repo_dict=repo_details[0], file_ext=[".py"])
 
                 # if there is no error
                 if return_code == 0:
 
-                    # find the diffs and save them 
-                    os.chdir("tmp/GitHub_Analyzer_API")
-
-                    # rerieve langage files
-                    py_files = retriev_files(path=".", file_ext=".py")
+                    analysis_results = run_pyanalysis()
                     
-                    commit_sha = []
-
-                    for tup in py_files:
-
-                        stdout, stderr, _ =  run_cmd_process(cmd_list=["git", "log", "--follow", tup[0]])
-
-                        # retrieve the first and current commit shas
-                        commit_sha.append(retrieve_init_last_commit_sha(stdout))
-
-                    additions_dict = dict()
-                    for tup in zip(py_files, commit_sha):
-                        
-                        # run git diff from the retrieved shas
-                        stdout, stderr, _ = run_cmd_process(cmd_list=["git", "diff", tup[1][0], tup[1][1], "--", tup[0][0]])
-
-                        # retrieve diff details
-                        additions, content = retrieve_diff_details(stdout)
-                        additions_dict[tup[0][0]] = additions
-
-                        # save changes made to file temporaily for analysis
-                        save_file(file_name=tup[0][1], content=content)
-                    
-
-
-                    analysis_dict = {"cyclomatic_complexity":"cc", "raw_metrics":"raw", "maintainability_index":"mi"}
-                    analysis_results = {}
-                    for k,v in analysis_dict.items():
-
-                        # run radon code analysis
-                        stdout, stderr, return_code = run_cmd_process(cmd_list=["radon", v, "./", "-s", "-j"])
-                        
-                        # if there is no error
-                        if return_code == 0:
-                            analysis_results[k] = json.loads(stdout.strip())
-                        else:
-                             analysis_results[k] = json.loads(stderr.strip())
-                    
-                    # delete tmp_dir after checking code metrics
+                    # delete repository directory after checking code metrics
                     os.chdir("../")
-                    shutil.rmtree(repo_path.split("/")[1])
+                    shutil.rmtree(repo_name)
 
-                    return jsonify({"analysis_results":analysis_results, "commit_additions":additions_dict})
-
-                    
+                    return jsonify({"analysis_results":analysis_results, "commit_additions":additions_dict})  
+                
                 else:
                     return jsonify({"error" : stderr})
 
             else:
-                return jsonify({"error":"repository does not contain python files"})
+                return jsonify({"error":"repository does not contain {} files".format(lang_list)})
 
         else:
             return jsonify({"error":"repository not found"})
@@ -219,6 +160,64 @@ def get_single_repo_pyanalysis(user, token, repo_name)->json:
     else:
         return jsonify({"error":"Not Found"})
 
+
+
+@app.route('/single_repos_jsanalysis/<string:user>/<string:token>/<string:repo_name>',methods=["GET"])
+def get_single_repo_jsanalysis(user, token, repo_name)->json:
+    """
+    Takes username, github generated token and name of repo and returns json of details of javascript code analis in 
+    repository
+
+    Args:
+        user(str): github account username
+        token(str): github account token
+        repo_name(str): github repository name
+
+    Returns:
+        json of details of python code analysis in repository 
+    """
+    # create authourization headers for get request
+    headers = {"Authorization":"Bearer {}".format(token)}
+    # send get request to github api
+    resp = requests.get('https://api.github.com/users/{}/repos'.format(user), headers=headers)
+    if resp.status_code == 200:
+        # retrive response body
+        d = resp.json()
+
+        # retrieve named repo
+        repo_details = [repo for repo in d if repo["name"]==repo_name]
+        
+        if repo_details:
+
+            lang_list = ["JavaScript"]
+            
+            # check if the repo contains python files
+            if  check_lang_exit(user=user, repo=repo_name, headers=headers, lang_list=lang_list):
+
+                stderr, return_code, additions_dict, files= run_to_get_adds_and_save_content(repo_name, repo_dict=repo_details[0], file_ext=[".js"])
+
+                # if there is no error
+                if return_code == 0:
+                    files = [f for tup in files for f in tup]
+                    analysis_results = run_jsanalysis(files)
+                    
+                    # delete repository directory after checking code metrics
+                    os.chdir("../")
+                    shutil.rmtree(repo_name)
+
+                    return jsonify({"analysis_results":analysis_results, "commit_additions":additions_dict})  
+                
+                else:
+                    return jsonify({"error" : stderr})
+
+            else:
+                return jsonify({"error":"repository does not contain {} files".format(lang_list)})
+
+        else:
+            return jsonify({"error":"repository not found"})
+    
+    else:
+        return jsonify({"error":"Not Found"})
 
 
 if __name__ == "__main__":
