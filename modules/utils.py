@@ -307,7 +307,7 @@ def retrieve_init_last_commit_sha(stdout) -> tuple:
         stdout: out put from a git diff cmd process
 
     Returns:
-        A tuples the first and the most current commit shas
+        A tuples of the first and the most current commit shas
     """
 
     # split the output into lines
@@ -334,7 +334,7 @@ def retrieve_diff_details(stdout) -> tuple:
         stdout: out put from a git log cmd process
 
     Returns:
-        A tuples the additions and the contents that has been added
+        A tuples of the additions and the contents that has been added
     """
     # split the output into lines
     lines = stdout.split("\n")
@@ -398,8 +398,18 @@ def create_repo_dir(repo_name, tmp_dir="tmp") -> str:
 
 
 
-def clone_repo(clone_url, repo_path):
+def clone_repo(clone_url, repo_path) -> tuple:
+    """
+    Runs a sub process to clone reposiories given the clone url and the path to the directory to clone into.
+    Returns the stderr and return code of the sub process.
 
+    Args:
+        clone_url(str): the git clone url of the repository to be cloned
+        repo_path(str): the path to the directory to clone into
+
+    Returns:
+        the stderr and return code of the sub process.
+    """
     # run cmd process to clone repo
     stdout, stderr, return_code = run_cmd_process(cmd_list = ["git", "clone", clone_url, repo_path])
 
@@ -407,6 +417,19 @@ def clone_repo(clone_url, repo_path):
 
 
 def get_additions_and_save_contents(files, commit_sha):
+    """
+    Retrieves the additions added in a file between two given commits and saves the content of the changes made.
+    Returns a dictionary of filenames as keys and the additions added as values.
+
+    Args:
+        files(str): A list of tuples of the relative path of language files , relative path of language files 
+                    with filenames prefixed with changed
+        commit_sha(str): tuples of the initial and the latter commit shas
+
+    Returns:
+        A dictionary of filenames as keys and the additions added as values.
+    """
+
     additions_dict = dict()
     for tup in zip(files, commit_sha):
         # run git diff from the retrieved shas
@@ -422,13 +445,24 @@ def get_additions_and_save_contents(files, commit_sha):
     return additions_dict
 
 
-def run_pyanalysis():
+def run_pyanalysis(path="./") -> dict:
+    """
+    Runs a subprocess to under take python code analysis recursively given the path to a directory on which 
+    to run the analysis.
+    Returns 
+
+    Args:
+        path(str): path to the directory on which code analysis is carried out on. Default = "./"
+
+    Returns:
+        A dictionary of filenames as keys and the dictionary of code metrics as values.
+    """
     analysis_dict = {"cyclomatic_complexity":"cc", "raw_metrics":"raw", "maintainability_index":"mi"}
     analysis_results = {}
     for k,v in analysis_dict.items():
 
         # run radon code analysis
-        stdout, stderr, return_code = run_cmd_process(cmd_list=["radon", v, "./", "-s", "-j"])
+        stdout, stderr, return_code = run_cmd_process(cmd_list=["radon", v, path, "-s", "-j"])
         
         # if there is no error
         if return_code == 0:
@@ -438,12 +472,28 @@ def run_pyanalysis():
     return analysis_results
 
 
-def run_to_get_adds_and_save_content(repo_name, repo_dict, file_ext, path="./"):
+def run_to_get_adds_and_save_content(repo_name, repo_dict, file_ext, path="./") -> tuple:
+    """
+    Abstract a processes involved from cloning and retrieving of commit shas to comparing changes that has occured between
+    the first and current commits.
+    Returns a tuple of stderr, return_code of the cloning process, additions_dict and files
+
+    Args:
+        repo_name(str): the name of the repository to be used for naming the directory
+        repo_dict(dict): dictionary of metadata returned as a response to a request to get metadata on repositoy
+        path(str): path to the directory where search is to be done recursively, default = "./"
+        file_ext(lst): file extention of files to look for with the "." included
+                        example ".py"
+
+    Returns:
+        A tuple of stderr, return_code of the cloning process, additions_dict and files
+    """
     # dir for named repo
     repo_path = create_repo_dir(repo_name)
 
     # clone repo
     stderr, return_code = clone_repo(repo_path=repo_path, clone_url=repo_dict["clone_url"])
+   
     # if there is no error
     if return_code == 0:
 
@@ -461,12 +511,24 @@ def run_to_get_adds_and_save_content(repo_name, repo_dict, file_ext, path="./"):
         return stderr, return_code, additions_dict, files
 
     else:
-        return stderr, return_code, dict()
+        return stderr, return_code, dict(), list()
 
 
 
 def run_jsanalysis(files):
+    """
+    Runs JavaScript code analysis on given JavaScript files in a list of files paths.
+    Returns a dictionary of filenames as keys and the dictionary of code metrics as values
+
+    Args:
+        files(list): list of files paths
+    Returns:
+        A dictionary of filenames as keys and the dictionary of code metrics as values.
+    """
+    # retrieve JavaScript files
     files = [f for f in files if f.endswith(".js")]
+
+    # run analysis
     analysis_results = {f:[i.__dict__ for i in lizard.analyze_file(f).function_list] for f in files}
     
     return analysis_results
