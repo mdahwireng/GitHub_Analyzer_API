@@ -1,7 +1,9 @@
+import json
+import shutil
 import requests
 import os
 import subprocess
-
+import lizard
 
 
 
@@ -24,7 +26,45 @@ def send_get_req(_url, _header=None) -> tuple:
     return resp, resp.status_code
 
 
-def retrieve_topk_langs(user, repo, headers, topk=3) -> list:
+def retrieve_langs(user, repo, headers) -> dict:
+    """
+    Retrieves languages in a github repository. 
+    Returns dictionary of language with language name as keys their 
+    raw values of contribution as values in repository
+
+    Args:
+        user(str): github username
+        repo(str): name of repo to retrieve meta data from
+        headers(dict): header to attach to the request
+
+    Returns:
+        dictionary of language with language name as keys their 
+        raw values of contribution as values in repository
+    """
+    languages_url = "https://api.github.com/repos/{}/{}/languages".format(user,repo)
+    return send_get_req(_url=languages_url, _header=headers)[0].json()
+
+
+def get_langs_contribs(langs_dict) -> list:
+    """
+    Creates percentage of contribution for languages in a github repository. 
+    Returns dictionary of language (keys) and percentage of language (values) in repository
+
+    Args:
+        langs_dict(dict): dictionary of language with language name as keys their 
+                            raw values of contribution as values in repository
+    Returns:
+        list of tuple of language and percentage of language in repository
+    """
+    #find the total contribution of all languages
+    total_contribs = sum([langs_dict.values()]) 
+
+    #calculate  and return % of language contribution
+    return [(l[0], float("{:.2f}".format(l[1]/total_contribs * 100))) \
+                        for l in langs_dict.items()]
+
+
+def retrieve_topk_langs(lang_list, topk=3) -> list:
     """
     Retrieves topk languages in a github repository. 
     Returns list of tuple of language and percentage of language in repository
@@ -37,18 +77,7 @@ def retrieve_topk_langs(user, repo, headers, topk=3) -> list:
 
     Returns:
         list of tuple of language and percentage of language in repository
-    """
-
-    languages_url = "https://api.github.com/repos/{}/{}/languages".format(user,repo)
-    languages = send_get_req(_url=languages_url, _header=headers)[0].json()
-    
-    #find the total contribution of all languages
-    total_contribs = sum([languages[l] for l in languages]) 
-
-    #calculate % of language contribution
-    lang_list = [(l, float("{:.2f}".format(languages[l]/total_contribs * 100))) \
-                        for l in languages]                 
-    
+    """                
     #sort languages by % of contribution
     lang_list.sort(key=lambda x:x[1], reverse=True)         
     
@@ -204,20 +233,22 @@ def retrieve_repo_meta(resp_json, headers, user) -> dict:
 
 
 
-def check_lang_exit(repo_dict, language) -> bool:
+def check_lang_exit(user, repo, headers, lang_list) -> bool:
     """
     Takes a dictionary of repository details and name of language files.
     Returns a boolean to indicate if language file is present in repository.
 
     Args:
         repo_dict(dict): dictionary or reponse with repository details
-        language(str): name of language
+        language(list): list of name(s) of language
 
     Returns:
         A boolean to indicate if language file is present in repository
     """
-    
-    return language in repo_dict["language"]
+    to_lower = lambda x:[i.lower() for i in x]
+    repo_lang_list = to_lower(retrieve_langs(user, repo, headers).keys())
+
+    return True in [l_c.lower() == l_r for l_c in lang_list for l_r in repo_lang_list]
 
 
 
@@ -255,7 +286,7 @@ def retriev_files(path, file_ext) -> list:
 
     Args:
         path(str): path to the directory where search is to be done recursively
-        file_ext(str): file extention of files to look for with the "." included
+        file_ext(lst): file extention of files to look for with the "." included
                         example ".py"
 
     Returns:
@@ -264,8 +295,7 @@ def retriev_files(path, file_ext) -> list:
     """
     return [(os.path.join(root, fn), os.path.join(root, "changed_"+fn)) 
             for root, _, files in os.walk(path, topdown=False) 
-            for fn in files if fn.endswith(file_ext)]
-
+            for fn in files for ext in file_ext if fn.endswith(ext)]
 
 
 def retrieve_init_last_commit_sha(stdout) -> tuple:
@@ -306,18 +336,20 @@ def retrieve_diff_details(stdout) -> tuple:
     Returns:
         A tuples the additions and the contents that has been added
     """
-
     # split the output into lines
     lines = stdout.split("\n")
-
-    # retireve additions from line with addition details                    
-    additions = lines[4].split(" ")[2][1:].replace("+","")
     
-    # replace commas in additions quantity
-    if "," in additions:
-        additions = additions.replace(",","")
+    if len(lines)>5:
+        # retireve additions from line with addition details                    
+        additions = lines[4].split(" ")[2][1:].replace("+","")
+        
+        # replace commas in additions quantity
+        if "," in additions:
+            additions = additions.replace(",","")
 
-    return int(additions), [i[1:] for i in lines[4:] if i.startswith("+")]
+        return int(additions), [i[1:] for i in lines[4:] if i.startswith("+")]
+    else:
+        return 0, [""]
 
 
 def save_file(file_name, content) -> None:
@@ -334,4 +366,107 @@ def save_file(file_name, content) -> None:
     """
     with open(file_name, "w") as f:
         f.write("\n".join(content))
- 
+
+
+def create_repo_dir(repo_name, tmp_dir="tmp") -> str:
+    """
+    Takes a temporary directory and repo_name and then creates a directory named as the name of the repository.
+    Returns the relative path to the created directory
+
+    Args:
+        tmp_dir(str): the name of the temporary directory. Default = "tmp"
+        repo_name(str): the name of the repository to be used for naming the directory
+
+    Returns:
+        A string of the relative path to the created directory
+    """
+    # dir for named repo
+    repo_path = "{}/{}".format(tmp_dir, repo_name)
+    
+    # create temporary folder if it does not exist
+    if not os.path.exists(tmp_dir):
+        os.mkdir(tmp_dir)
+    
+    # delete directory named just as repository name if it exists
+    if os.path.exists(repo_path):
+        shutil.rmtree(repo_path)
+
+    # create directory named just as repository name
+    os.mkdir(repo_path)
+
+    return repo_path
+
+
+
+def clone_repo(clone_url, repo_path):
+
+    # run cmd process to clone repo
+    stdout, stderr, return_code = run_cmd_process(cmd_list = ["git", "clone", clone_url, repo_path])
+
+    return stderr, return_code
+
+
+def get_additions_and_save_contents(files, commit_sha):
+    additions_dict = dict()
+    for tup in zip(files, commit_sha):
+        # run git diff from the retrieved shas
+        stdout, stderr, _ = run_cmd_process(cmd_list=["git", "diff", tup[1][0], tup[1][1], "--", tup[0][0]])
+
+        # retrieve diff details
+        additions, content = retrieve_diff_details(stdout)
+        additions_dict[tup[0][0]] = additions
+
+        # save changes made to file temporaily for analysis
+        save_file(file_name=tup[0][1], content=content)
+    
+    return additions_dict
+
+
+def run_pyanalysis():
+    analysis_dict = {"cyclomatic_complexity":"cc", "raw_metrics":"raw", "maintainability_index":"mi"}
+    analysis_results = {}
+    for k,v in analysis_dict.items():
+
+        # run radon code analysis
+        stdout, stderr, return_code = run_cmd_process(cmd_list=["radon", v, "./", "-s", "-j"])
+        
+        # if there is no error
+        if return_code == 0:
+            analysis_results[k] = json.loads(stdout.strip())
+        else:
+            analysis_results[k] = json.loads(stderr.strip())
+    return analysis_results
+
+
+def run_to_get_adds_and_save_content(repo_name, repo_dict, file_ext, path="./"):
+    # dir for named repo
+    repo_path = create_repo_dir(repo_name)
+
+    # clone repo
+    stderr, return_code = clone_repo(repo_path=repo_path, clone_url=repo_dict["clone_url"])
+    # if there is no error
+    if return_code == 0:
+
+        # change working directory to cloned reository
+        os.chdir(repo_path)
+
+        # rerieve language files
+        files = retriev_files(file_ext=file_ext, path=path)
+
+        commit_sha = [retrieve_init_last_commit_sha(run_cmd_process(cmd_list=["git", "log", "--follow", tup[0]])[0])
+                        for tup in files]
+
+        additions_dict = get_additions_and_save_contents(files, commit_sha)
+
+        return stderr, return_code, additions_dict, files
+
+    else:
+        return stderr, return_code, dict()
+
+
+
+def run_jsanalysis(files):
+    files = [f for f in files if f.endswith(".js")]
+    analysis_results = {f:[i.__dict__ for i in lizard.analyze_file(f).function_list] for f in files}
+    
+    return analysis_results
