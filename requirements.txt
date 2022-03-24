@@ -7,6 +7,7 @@ future==0.18.2
 idna==3.3
 itsdangerous==2.1.0
 Jinja2==3.0.3
+lizard==1.17.9
 mando==0.6.4
 MarkupSafe==2.1.0
 radon==5.1.0
