@@ -11,7 +11,7 @@ cpath = os.path.dirname(curdir)
 if not cpath in sys.path:
     sys.path.append(cpath)
 
-from modules.utils import check_lang_exit, clone_repo, create_repo_dir, get_additions_and_save_contents, retriev_files, retrieve_diff_details, retrieve_init_last_commit_sha, retrieve_repo_meta, run_cmd_process, run_jsanalysis, run_pyanalysis, run_to_get_adds_and_save_content, save_file, send_get_req
+from modules.utils import check_lang_exit, retrieve_repo_meta, run_jsanalysis, run_pyanalysis, run_to_get_adds_and_save_content, send_get_req
 
 
 
