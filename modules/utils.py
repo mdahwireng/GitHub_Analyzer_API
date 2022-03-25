@@ -532,3 +532,7 @@ def run_jsanalysis(files):
     analysis_results = {f:[i.__dict__ for i in lizard.analyze_file(f).function_list] for f in files}
     
     return analysis_results
+
+
+def get_cc_summary(cc_list):
+    return sum([r["complexity"] for r  in cc_list])/len(cc_list)
