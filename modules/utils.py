@@ -4,6 +4,8 @@ import requests
 import os
 import subprocess
 import lizard
+from radon.complexity import cc_rank
+from radon.metrics import mi_rank
 
 
 
@@ -57,7 +59,7 @@ def get_langs_contribs(langs_dict) -> list:
         list of tuple of language and percentage of language in repository
     """
     #find the total contribution of all languages
-    total_contribs = sum([langs_dict.values()]) 
+    total_contribs = sum(list(langs_dict.values())) 
 
     #calculate  and return % of language contribution
     return [(l[0], float("{:.2f}".format(l[1]/total_contribs * 100))) \
@@ -70,9 +72,7 @@ def retrieve_topk_langs(lang_list, topk=3) -> list:
     Returns list of tuple of language and percentage of language in repository
 
     Args:
-        user(str): github username
-        repo(str): name of repo to retrieve meta data from
-        headers(dict): header to attach to the request
+        lang_list(list): list of tuple of language and percentage of language in repository
         topk(int): the number of top languages to retrieve, default = 3
 
     Returns:
@@ -83,6 +83,33 @@ def retrieve_topk_langs(lang_list, topk=3) -> list:
     
     #return topk languages
     return lang_list[:topk]
+
+
+
+def get_topk_langs(user, repo, headers, topk=3) -> list:
+    """
+    Retrieves topk languages in a github repository. 
+    Returns list of tuple of language and percentage of language in repository
+
+    Args:
+        user(str): github username
+        repo(str): name of repo to retrieve meta data from
+        headers(dict): header to attach to the request
+        topk(int): the number of top languages to retrieve, default = 3
+
+    Returns:
+        list of tuple of language and percentage of language in repository
+    """     
+    #get lang details
+    langs_dict = retrieve_langs(user, repo, headers)
+    langs_list = get_langs_contribs(langs_dict)
+
+    #sort languages by % of contribution
+    langs_list = retrieve_topk_langs(langs_list, topk=3)        
+    
+    #return topk languages
+    return langs_list[:topk]
+
 
 
 
@@ -212,7 +239,7 @@ def retrieve_repo_meta(resp_json, headers, user) -> dict:
     for repo in dt.keys():
 
         # Retrieve language details
-        dt[repo]["languages"] = retrieve_topk_langs(user, repo, headers, topk=3)
+        dt[repo]["languages"] = get_topk_langs(user, repo, headers, topk=3)
 
         # Retrieve branches details
         dt[repo]["branches"] = retrieve_num_branches(user, repo, headers)
@@ -224,10 +251,16 @@ def retrieve_repo_meta(resp_json, headers, user) -> dict:
         dt[repo]["contributors"] = retrieve_contributors(user, repo, headers)
 
         # Retrieve clones details
-        dt[repo]["clones"] = retrieve_clone_details(user, repo, headers)
+        try:
+            dt[repo]["clones"] = retrieve_clone_details(user, repo, headers)
+        except:
+            dt[repo]["clones"] = "Cannot get Acess"
+        try:
+            # Retrieve views(visitors) details
+            dt[repo]["visitors"] = retrieve_views_details(user, repo, headers)
+        except:
+             dt[repo]["visitors"] = "Cannot get Acess"
         
-        # Retrieve views(visitors) details
-        dt[repo]["visitors"] = retrieve_views_details(user, repo, headers)
 
     return dt
 
@@ -341,7 +374,10 @@ def retrieve_diff_details(stdout) -> tuple:
     
     if len(lines)>5:
         # retireve additions from line with addition details                    
-        additions = lines[4].split(" ")[2][1:].replace("+","")
+        try:
+            additions = lines[4].split(" ")[2][1:].replace("+","")
+        except:
+            additions = "0"
         
         # replace commas in additions quantity
         if "," in additions:
@@ -534,5 +570,129 @@ def run_jsanalysis(files):
     return analysis_results
 
 
-def get_cc_summary(cc_list):
-    return sum([r["complexity"] for r  in cc_list])/len(cc_list)
+def get_cc_avg(cc_list, cc_key):
+    return sum([r[cc_key] for r  in cc_list])/len(cc_list)
+
+def get_cc_summary(analysis_results, cc_key):
+    return  {
+                f:
+                    (
+                        {
+                        "cc": get_cc_avg(analysis_results["cyclomatic_complexity"][f], cc_key),
+                        "rank": cc_rank(get_cc_avg(analysis_results["cyclomatic_complexity"][f], cc_key))
+                        }
+                        if isinstance(analysis_results["cyclomatic_complexity"][f], list) else None
+                    ) 
+                    for f in analysis_results["cyclomatic_complexity"]
+            }
+
+def get_file_level_summary(analysis_results, additions_dict):
+    
+    file_level = {f:dict() for f in analysis_results["raw_metrics"]}
+    for f in file_level.keys():
+        
+        # cyclomatic complexity 
+        if f in analysis_results["cyclomatic_complexity_summary"].keys() and analysis_results["cyclomatic_complexity_summary"][f] != None:
+            file_level[f]["cc"] = analysis_results["cyclomatic_complexity_summary"][f]["cc"]
+            file_level[f]["cc_rank"] = analysis_results["cyclomatic_complexity_summary"][f]["rank"]
+        else:
+            file_level[f]["cc"] = None
+            file_level[f]["cc_rank"] = "N/A"
+
+        # cyclomatic complexity 
+        if f in analysis_results["maintainability_index"].keys() and "error" not in analysis_results["maintainability_index"][f].keys():
+            file_level[f]["mi"] = analysis_results["maintainability_index"][f]["mi"]
+            file_level[f]["mi_rank"] = analysis_results["maintainability_index"][f]["rank"]
+        else:
+            file_level[f]["mi"] = None
+            file_level[f]["mi_rank"] = "N/A"
+
+        # additions
+        if "./"+f in additions_dict.keys():
+            file_level[f]["additions"] = additions_dict["./"+f]
+        else:
+            file_level[f]["additions"] = None
+
+        # raw metrics
+        file_level[f].update(analysis_results["raw_metrics"][f])
+    
+    return file_level
+
+
+def get_repo_level_summary(files, file_level):
+    commulative_keys = ["blank","comments","lloc","loc","multi","single_comments","sloc","additions"]
+                    
+    repo_summary = {k:[] for k in file_level[files[0][0][2:]].keys() if not k.endswith("_rank")}
+    
+    for k in repo_summary.keys():
+        for f in file_level:
+            if not f.__contains__("changed_"):
+                if file_level[f][k] != None:
+                    repo_summary[k].append(file_level[f][k])
+
+    repo_summary = {k:(sum(v) if k in commulative_keys else sum(v)/len(v)) for k,v in repo_summary.items()}
+    
+    repo_summary["cc_rank"] = cc_rank(repo_summary["cc"])
+    repo_summary["mi_rank"] = mi_rank(repo_summary["mi"])
+
+    return repo_summary
+
+
+
+def get_js_cc_summary(analysis_results, cc_key):
+    return  {
+                f:
+                    (
+                        {
+                        "cc": get_cc_avg(analysis_results[f], cc_key),
+                        "rank": cc_rank(get_cc_avg(analysis_results[f], cc_key)),
+                        "nloc":  sum([i["nloc"] for i in analysis_results[f]]),
+                        "length":  sum([i["length"] for i in analysis_results[f]]),
+                        "token_count": sum([i["token_count"] for i in analysis_results[f]])
+                        }
+                        if len(analysis_results[f]) != 0 else {"cc": None, "rank": None, "nloc" : None, "length" : None,"token_count" : None}
+                    ) 
+                    for f in analysis_results
+            }
+
+
+def get_repo_level_summary(files, file_level):
+    commulative_keys = ["blank","comments","lloc","loc","multi","single_comments","sloc","additions"]
+                    
+    repo_summary = {k:[] for k in file_level[files[0][0][2:]].keys() if not k.endswith("_rank")}
+    
+    for k in repo_summary.keys():
+        for f in file_level:
+            if not f.__contains__("changed_"):
+                if file_level[f][k] != None:
+                    repo_summary[k].append(file_level[f][k])
+
+    repo_summary = {k:(sum(v) if k in commulative_keys else sum(v)/len(v) if len(v) > 0 else 0) for k,v in repo_summary.items()}
+    
+    repo_summary["cc_rank"] = cc_rank(repo_summary["cc"])
+    repo_summary["mi_rank"] = mi_rank(repo_summary["mi"])
+
+    return repo_summary
+
+
+def add_js_additions(analysis_results, addition_dict):
+    for f in addition_dict.keys():
+        analysis_results["cyclomatic_complexity_summary"][f]["additions"] = addition_dict[f]
+    return analysis_results
+
+
+def get_jsrepo_level_summary(files, file_level):
+
+    repo_summary = {k:[] for k in file_level[files[0]].keys() if k != "rank"}
+    
+    for k in repo_summary.keys():
+        for f in file_level:
+            if not f.__contains__("changed_"):
+                if file_level[f][k] != None:
+                    repo_summary[k].append(file_level[f][k])
+
+    repo_summary = {k:(sum(v) if k != "cc" else sum(v)/len(v)) for k,v in repo_summary.items()}
+    
+    repo_summary["cc_rank"] = cc_rank(repo_summary["cc"])
+
+    return repo_summary
