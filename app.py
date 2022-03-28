@@ -213,48 +213,55 @@ def get_single_repo_jsanalysis(user, token, repo_name)->json:
     # create authourization headers for get request
     headers = {"Authorization":"Bearer {}".format(token)}
     # send get request to github api
-    resp = requests.get('https://api.github.com/users/{}/repos'.format(user), headers=headers)
-    if resp.status_code == 200:
+    resp, resp_status_code = send_get_req(_url="https://api.github.com/search/repositories?q=repo:{}/{}".format(user,repo_name), _header=headers)
+    if resp_status_code == 200:
         # retrive response body
         d = resp.json()
-
-        # retrieve named repo
-        repo_details = [repo for repo in d if repo["name"]==repo_name]
-        
-        if repo_details:
-
-            lang_list = ["JavaScript"]
-            
-            # check if the repo contains python files
-            if  check_lang_exit(user=user, repo=repo_name, headers=headers, lang_list=lang_list):
-
-                stderr, return_code, additions_dict, files= run_to_get_adds_and_save_content(repo_name, repo_dict=repo_details[0], file_ext=[".js"])
-
-                # if there is no error
-                if return_code == 0:
-                    files = [f for tup in files for f in tup]
-                    analysis_results = run_jsanalysis(files)
-                    analysis_results["cyclomatic_complexity_summary"] = get_js_cc_summary(analysis_results, "cyclomatic_complexity")
-                    analysis_results = add_js_additions(analysis_results, additions_dict)
-                    analysis_results["repo_summary"] = get_jsrepo_level_summary(files, analysis_results["cyclomatic_complexity_summary"])
-
-                    # delete repository directory after checking code metrics
-                    os.chdir("../")
-                    shutil.rmtree(repo_name)
-
-                    return jsonify({"analysis_results":analysis_results, "commit_additions":additions_dict})  
-                
-                else:
-                    return jsonify({"error" : stderr})
-
+        print(d)
+        repo_details = [repo for repo in d["items"]]
+        print(repo_details)
+        if len(repo_details) == 0:
+            resp, resp_status_code = send_get_req(_url='https://api.github.com/users/{}/repos'.format(user), _header=headers)
+            if resp_status_code == 200:
+                # retrive response body
+                d = resp.json()
+                # retrieve named repo
+                repo_details = [repo for repo in d if repo["name"]==repo_name]
+                if len(repo_details) == 0:
+                    return jsonify({"error":"Not Found"})
             else:
-                return jsonify({"error":"repository does not contain {} files".format(lang_list)})
+                return jsonify({"error":"Not Found"})
+
+        lang_list = ["JavaScript"]
+        
+        # check if the repo contains python files
+        if  check_lang_exit(user=user, repo=repo_name, headers=headers, lang_list=lang_list):
+
+            stderr, return_code, additions_dict, files= run_to_get_adds_and_save_content(repo_name, repo_dict=repo_details[0], file_ext=[".js"])
+
+            # if there is no error
+            if return_code == 0:
+                files = [f for tup in files for f in tup]
+                analysis_results = run_jsanalysis(files)
+                analysis_results["cyclomatic_complexity_summary"] = get_js_cc_summary(analysis_results, "cyclomatic_complexity")
+                analysis_results = add_js_additions(analysis_results, additions_dict)
+                analysis_results["repo_summary"] = get_jsrepo_level_summary(files, analysis_results["cyclomatic_complexity_summary"])
+
+                # delete repository directory after checking code metrics
+                os.chdir("../")
+                shutil.rmtree(repo_name)
+
+                return jsonify({"analysis_results":analysis_results, "commit_additions":additions_dict})  
+            
+            else:
+                return jsonify({"error" : stderr})
 
         else:
-            return jsonify({"error":"repository not found"})
+            return jsonify({"error":"repository does not contain {} files".format(lang_list)})
+
     
     else:
-        return jsonify({"error":"Not Found"})
+        return jsonify({"error":resp.json()["errors"][0]["message"]})
 
 
 if __name__ == "__main__":
