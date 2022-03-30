@@ -217,9 +217,7 @@ def get_single_repo_jsanalysis(user, token, repo_name)->json:
     if resp_status_code == 200:
         # retrive response body
         d = resp.json()
-        print(d)
         repo_details = [repo for repo in d["items"]]
-        print(repo_details)
         if len(repo_details) == 0:
             resp, resp_status_code = send_get_req(_url='https://api.github.com/users/{}/repos'.format(user), _header=headers)
             if resp_status_code == 200:
