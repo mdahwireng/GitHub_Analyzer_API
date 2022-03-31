@@ -480,6 +480,33 @@ def get_additions_and_save_contents(files, commit_sha):
     
     return additions_dict
 
+def get_hal_summary(hal_result_dict)->dict:
+    """
+    Takes a dictionary of filenames as keys and the halstead complexity metrics as values.
+    Returns a dictionary of filenames as keys and the hal summary as values.
+    
+    Args:
+        hal_result_dict(dict): A dictionary of filenames as keys and the additions added as values.
+        
+    Returns: 
+        A dictionary of filenames as keys and the hal summary as values.
+    """
+    # keys for hal summary
+    keys = ["difficulty", "effort", "time"]
+
+    # create a dictionary of hal summary
+    hal_summary_dict = dict()
+
+    # loop through all the files
+    for f in hal_result_dict.keys():
+        if "error" in hal_result_dict[f].keys():
+            hal_summary_dict[f] = {keys[i]:0 for i in range(len(keys))}
+        else:
+            hld = hal_result_dict[f]["total"][-4:-1]
+            hal_summary_dict[f] = {keys[i]:hld[i] for i in range(len(keys))}
+    
+    return hal_summary_dict
+
 
 def run_pyanalysis(path="./") -> dict:
     """
@@ -493,18 +520,27 @@ def run_pyanalysis(path="./") -> dict:
     Returns:
         A dictionary of filenames as keys and the dictionary of code metrics as values.
     """
-    analysis_dict = {"cyclomatic_complexity":"cc", "raw_metrics":"raw", "maintainability_index":"mi"}
+    analysis_dict = {"halstead_complexity":"hal","cyclomatic_complexity":"cc", "raw_metrics":"raw", "maintainability_index":"mi"}
     analysis_results = {}
     for k,v in analysis_dict.items():
+        if k == "halstead_complexity":
+            stdout, stderr, return_code = run_cmd_process(cmd_list=["radon", v, path , "-j"])
 
-        # run radon code analysis
-        stdout, stderr, return_code = run_cmd_process(cmd_list=["radon", v, path, "-s", "-j"])
+            if return_code == 0:
+                analysis_results[k] = get_hal_summary(json.loads(stdout.strip()))
+                
+            else:
+                analysis_results[k] = json.loads(stderr.strip())
         
-        # if there is no error
-        if return_code == 0:
-            analysis_results[k] = json.loads(stdout.strip())
         else:
-            analysis_results[k] = json.loads(stderr.strip())
+            # run radon code analysis
+            stdout, stderr, return_code = run_cmd_process(cmd_list=["radon", v, path, "-s", "-j"])
+            
+            # if there is no error
+            if return_code == 0:
+                analysis_results[k] = json.loads(stdout.strip())
+            else:
+                analysis_results[k] = json.loads(stderr.strip())
     return analysis_results
 
 
@@ -659,7 +695,8 @@ def get_file_level_summary(analysis_results, additions_dict):
             file_level[f]["additions"] = None
 
         # raw metrics
-        file_level[f].update(analysis_results["raw_metrics"][f])
+        file_level[f].update(analysis_results["raw_metrics"][f]) 
+        file_level[f].update(analysis_results["halstead_complexity"][f])
     
     return file_level
 
@@ -683,7 +720,7 @@ def get_js_cc_summary(analysis_results, cc_key):
 
 
 def get_repo_level_summary(files, file_level):
-    commulative_keys = ["blank","comments","lloc","loc","multi","single_comments","sloc","additions","num_functions","num_classes","num_methods"]
+    commulative_keys = ["blank","comments","lloc","loc","multi","single_comments","sloc","additions","num_functions","num_classes","num_methods","difficulty", "effort", "time"]
                     
     repo_summary = {k:[] for k in file_level[files[0][0][2:]].keys() if not k.endswith("_rank")}
     
