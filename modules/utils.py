@@ -586,11 +586,56 @@ def get_cc_summary(analysis_results, cc_key):
                     for f in analysis_results["cyclomatic_complexity"]
             }
 
+
+def get_type_details(_type, v_list)->dict:
+    """
+    Retrieves the details of a type from the results of cc_analysis dictionary
+
+    Args:
+        _type (str): The type of the details to be retrieved
+        v_dict (dict): The list of dictionaries containing the results of cc_analysis
+    Returns:
+        A dictionary of the number of the type and the average number of lines of code
+    """
+    return {
+        "num_" + _type :  [len([1 for i in v_list if i["type"]==_type])][0],
+        "avg_lines_per_" + _type : [
+            round(sum([i["endline"] - i["lineno"] for i in v_list if i["type"]==_type])/len([1 for i in v_list if i["type"]==_type]))
+            if len([1 for i in v_list if i["type"]==_type]) > 0 else 0                     
+                            ][0]
+       } 
+
+
+
 def get_file_level_summary(analysis_results, additions_dict):
     
     file_level = {f:dict() for f in analysis_results["raw_metrics"]}
     for f in file_level.keys():
-        
+        # get type details
+        if f in analysis_results["cyclomatic_complexity"].keys() and isinstance(analysis_results["cyclomatic_complexity"][f], list):
+            # functions
+            hld = get_type_details("function", analysis_results["cyclomatic_complexity"][f])
+            file_level[f]["num_functions"] = hld["num_function"]
+            file_level[f]["avg_lines_per_function"] = hld["avg_lines_per_function"]
+            # classes
+            hld = get_type_details("class", analysis_results["cyclomatic_complexity"][f])
+            file_level[f]["num_classes"] = hld["num_class"]
+            file_level[f]["avg_lines_per_class"] = hld["avg_lines_per_class"]
+            # methods
+            hld = get_type_details("method", analysis_results["cyclomatic_complexity"][f])
+            file_level[f]["num_methods"] = hld["num_method"]
+            file_level[f]["avg_lines_per_method"] = hld["avg_lines_per_method"]
+        else:
+            # functions
+            file_level[f]["num_functions"] = 0
+            file_level[f]["avg_lines_per_function"] = 0
+            # classes
+            file_level[f]["num_classes"] = 0
+            file_level[f]["avg_lines_per_class"] = 0
+            # methods
+            file_level[f]["num_methods"] = 0
+            file_level[f]["avg_lines_per_method"] = 0
+
         # cyclomatic complexity 
         if f in analysis_results["cyclomatic_complexity_summary"].keys() and analysis_results["cyclomatic_complexity_summary"][f] != None:
             file_level[f]["cc"] = analysis_results["cyclomatic_complexity_summary"][f]["cc"]
@@ -599,7 +644,7 @@ def get_file_level_summary(analysis_results, additions_dict):
             file_level[f]["cc"] = None
             file_level[f]["cc_rank"] = "N/A"
 
-        # cyclomatic complexity 
+        # maintainability index
         if f in analysis_results["maintainability_index"].keys() and "error" not in analysis_results["maintainability_index"][f].keys():
             file_level[f]["mi"] = analysis_results["maintainability_index"][f]["mi"]
             file_level[f]["mi_rank"] = analysis_results["maintainability_index"][f]["rank"]
@@ -617,25 +662,6 @@ def get_file_level_summary(analysis_results, additions_dict):
         file_level[f].update(analysis_results["raw_metrics"][f])
     
     return file_level
-
-
-def get_repo_level_summary(files, file_level):
-    commulative_keys = ["blank","comments","lloc","loc","multi","single_comments","sloc","additions"]
-                    
-    repo_summary = {k:[] for k in file_level[files[0][0][2:]].keys() if not k.endswith("_rank")}
-    
-    for k in repo_summary.keys():
-        for f in file_level:
-            if not f.__contains__("changed_"):
-                if file_level[f][k] != None:
-                    repo_summary[k].append(file_level[f][k])
-
-    repo_summary = {k:(sum(v) if k in commulative_keys else sum(v)/len(v)) for k,v in repo_summary.items()}
-    
-    repo_summary["cc_rank"] = cc_rank(repo_summary["cc"])
-    repo_summary["mi_rank"] = mi_rank(repo_summary["mi"])
-
-    return repo_summary
 
 
 
@@ -657,17 +683,17 @@ def get_js_cc_summary(analysis_results, cc_key):
 
 
 def get_repo_level_summary(files, file_level):
-    commulative_keys = ["blank","comments","lloc","loc","multi","single_comments","sloc","additions"]
+    commulative_keys = ["blank","comments","lloc","loc","multi","single_comments","sloc","additions","num_functions","num_classes","num_methods"]
                     
     repo_summary = {k:[] for k in file_level[files[0][0][2:]].keys() if not k.endswith("_rank")}
     
     for k in repo_summary.keys():
         for f in file_level:
-            if not f.__contains__("changed_"):
+            if not f.__contains__("changed_") and k in file_level[f].keys():
                 if file_level[f][k] != None:
                     repo_summary[k].append(file_level[f][k])
 
-    repo_summary = {k:(sum(v) if k in commulative_keys else sum(v)/len(v) if len(v) > 0 else 0) for k,v in repo_summary.items()}
+    repo_summary = {k:(sum(v) if k in commulative_keys else round(sum(v)/len(v)) if len(v) > 0 else 0) for k,v in repo_summary.items()}
     
     repo_summary["cc_rank"] = cc_rank(repo_summary["cc"])
     repo_summary["mi_rank"] = mi_rank(repo_summary["mi"])
