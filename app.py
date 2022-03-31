@@ -86,7 +86,7 @@ def get_repo_meta(user, token)->json:
     if resp_status_code == 200:
         # retrive response body
         d = resp.json()
-        info_list = ["forks", "languages_url", "contributors_url", "branches_url"]
+        info_list = ["forks", "languages_url", "contributors_url", "branches_url", "description", "html_url"]
         resp_dict = {repo["name"]:{k:repo[k] for k in info_list} for repo in d}
         dt = retrieve_repo_meta(resp_json=resp_dict, headers=headers, user=user)
         return jsonify(dt)
@@ -118,7 +118,7 @@ def get_single_repo_meta(user, token, repo_name)->json:
     if resp_status_code == 200:
         # retrive response body
         d = resp.json()
-        info_list = ["forks", "languages_url", "contributors_url", "branches_url"]
+        info_list = ["forks", "languages_url", "contributors_url", "branches_url", "description", "html_url"]
         resp_dict = {repo["name"]:{k:repo[k] for k in info_list} for repo in d["items"]}
         if len(resp_dict) == 0:
             resp, resp_status_code = send_get_req(_url='https://api.github.com/users/{}/repos'.format(user), _header=headers)
