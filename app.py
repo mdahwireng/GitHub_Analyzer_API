@@ -35,9 +35,18 @@ def get_user(user, token)->json:
     if resp_status_code == 200:
         # retrive response body
         d = resp.json()
-        info_list = ["avatar_url", "public_repos",'name', 'email', 'bio','followers', 'following']
+        info_list = ["avatar_url", "public_repos",'name', 'email', 'bio','followers', 'following', "html_url"]
         dt = {k:d[k] for k in info_list}
         
+        # issues
+        resp, resp_status_code = send_get_req(_url='https://api.github.com/search/issues?q=author:{}'.format(user), _header=headers)
+        if resp_status_code == 200:
+            d = resp.json()
+            dt["issues"] = d["total_count"]
+        else:
+            dt["issues"] = "N/A"
+
+        # pull requests
         resp, resp_status_code = send_get_req(_url='https://api.github.com/search/issues?q=author:{}+is:pr'.format(user), _header=headers)
         if resp_status_code == 200:
             d = resp.json()
