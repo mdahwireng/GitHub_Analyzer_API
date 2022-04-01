@@ -730,7 +730,7 @@ def get_repo_level_summary(files, file_level):
                 if file_level[f][k] != None:
                     repo_summary[k].append(file_level[f][k])
 
-    repo_summary = {k:(sum(v) if k in commulative_keys else round(sum(v)/len(v)) if len(v) > 0 else 0) for k,v in repo_summary.items()}
+    repo_summary = {k:(sum(v) if k in commulative_keys else sum(v)/len(v)) if len(v) > 0 else 0 for k,v in repo_summary.items()}
     
     repo_summary["cc_rank"] = cc_rank(repo_summary["cc"])
     repo_summary["mi_rank"] = mi_rank(repo_summary["mi"])
