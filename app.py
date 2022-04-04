@@ -189,8 +189,8 @@ def get_single_repo_pyanalysis(user, token, repo_name)->json:
                 analysis_results["repo_summary"] = get_repo_level_summary(files, analysis_results["file_level"])
                 
                 # delete repository directory after checking code metrics
-                os.chdir("../")
-                shutil.rmtree(repo_name)
+                os.chdir("../../")
+                shutil.rmtree("tmp/"+repo_name)
 
                 return jsonify({"analysis_results":analysis_results})  
             
@@ -266,8 +266,8 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name)->json:
                 analysis_results["repo_summary"] = get_repo_level_summary(files, analysis_results["file_level"])
                 
                 # delete repository directory after checking code metrics
-                os.chdir("../")
-                shutil.rmtree(repo_name)
+                os.chdir("../../")
+                shutil.rmtree("tmp/"+repo_name)
 
                 return jsonify({"repo_meta":dt, "analysis_results":analysis_results})  
             
@@ -332,8 +332,8 @@ def get_single_repo_jsanalysis(user, token, repo_name)->json:
                 analysis_results["repo_summary"] = get_jsrepo_level_summary(files, analysis_results["cyclomatic_complexity_summary"])
 
                 # delete repository directory after checking code metrics
-                os.chdir("../")
-                shutil.rmtree(repo_name)
+                os.chdir("../../")
+                shutil.rmtree("tmp/"+repo_name)
 
                 return jsonify({"analysis_results":analysis_results, "commit_additions":additions_dict})  
             
