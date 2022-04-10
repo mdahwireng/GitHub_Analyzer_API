@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 from airflow import DAG
@@ -10,14 +11,14 @@ cpath = os.path.dirname(curdir)
 if not cpath in sys.path:
     sys.path.append(cpath)
 
-from app import run_api
 from modules.Category_Dict import Metrics_Summary_Dict
 from modules.analyzer_utils import get_df, get_df_dict, get_github_analysis_dict, get_id_userid_df, get_metric_summary_dict, get_rank_dict, get_repo_df_dict, get_repo_names
 from modules.strapi_methods import get_table_data_strapi, upload_to_strapi
 
+
 # set needed variables
 metrics_list = ["additions","avg_lines_per_class","avg_lines_per_function","avg_lines_per_method",
-                    "cc","difficulty",'effort','lloc','loc','mi','num_capachelasses','num_functions','num_methods',
+                    "cc","difficulty",'effort','lloc','loc','mi','num_classes','num_functions','num_methods',
                     'sloc','time']
 
 user_df_cols = ['avatar_url', 'bio', 'commits', 'email', 'followers', 'following', 'html_url', 
@@ -35,7 +36,40 @@ repo_metrics_cols = ['additions', 'avg_lines_per_class', 'avg_lines_per_function
                     'cc', 'difficulty', 'effort', 'lloc', 'loc', 'mi', 'num_classes', 'num_functions', 
                     'num_methods', 'sloc', 'time']
 
+def get_var_from_json(path_to_json:str, var_name:str):
+    """
+    Gets the variable from the json file
 
+    Args:
+        path_to_json (str): path to the json file
+        var_name (str): variable name (key)
+    """
+
+    if os.path.exists(path_to_json):
+        with open(path_to_json, "r") as f:
+            try:
+                j_dict = json.load(f)
+                var_ = j_dict[var_name]
+            except:
+                print("Error: could not load json file")
+                var_ = None
+    else:
+        print("Error: json file does not exist")
+        var_ = None
+    return var_
+
+def get_github_token(path_to_json=".env/secret.json", var_name="github_token")->str:
+    """
+    Gets the github token from the json file
+
+    Args:
+        ti (TaskInstance): TaskInstance object
+    
+    Returns:
+        str: github token
+    """
+    github_token = get_var_from_json(path_to_json=path_to_json, var_name=var_name)
+    return github_token
 
 def get_trainee_dict(ti)->dict:
     """
@@ -52,7 +86,45 @@ def get_trainee_dict(ti)->dict:
 
 
 
-def exit_with_error(error_message="Error: trainee data was not returned")->None:
+def exit_with_error(error_message)->None:
+    """
+    Prints error message and exits the program
+    
+    Args:
+        error_message (str): error message to print
+        
+    Returns:
+        None
+    """
+    print(error_message)
+    sys.exit(1)
+
+def exit_with_error_trainee(error_message="Error: trainee data was not returned")->None:
+    """
+    Prints error message and exits the program
+    
+    Args:
+        error_message (str): error message to print
+        
+    Returns:
+        None
+    """
+    exit_with_error(error_message=error_message)
+
+def exit_with_error_github_token(error_message="Error: github token was not returned")->None:
+    """
+    Prints error message and exits the program
+    
+    Args:
+        error_message (str): error message to print
+        
+    Returns:
+        None
+    """
+    exit_with_error(error_message=error_message)
+
+
+def exit_with_error_token(error_message="Error: token was not returned")->None:
     """
     Prints error message and exits the program
     
@@ -83,6 +155,23 @@ def choose_path_after_trainee_data(ti)->str:
     else:
         return "exit_with_error_"
 
+def choose_path_after_github_token(ti)->str:
+    """
+    Chooses the path to the next DAG depending on the github token
+    
+    Args:
+        ti (TaskInstance): TaskInstance object
+        
+    Returns:
+        str: path to the next DAG
+    """
+    # check if github_token was returned
+    github_token = ti.xcom_pull(task_ids="get_github_token_")
+    if github_token is not None:
+        return "get_trainee_dict_"
+    else:
+        return "exit_with_error_token_"
+
 
 def get_trainee_df(ti)->pd.DataFrame:
     """
@@ -95,8 +184,8 @@ def get_trainee_df(ti)->pd.DataFrame:
         pd.DataFrame: trainee dataframe
     """
     trainee_dict = ti.xcom_pull(task_ids="get_trainee_dict_")
-    trainee_df = get_id_userid_df(data_dict=trainee_dict)
-    return trainee_df
+    trainee_df_dict = get_id_userid_df(data_dict=trainee_dict).to_json()
+    return json.loads(trainee_df_dict)
 
 
 def read_data()->pd.DataFrame:
@@ -112,8 +201,9 @@ def read_data()->pd.DataFrame:
     # read in the data
     dt_user = pd.read_csv("data/github_usernames.csv")
     dt_repo = pd.read_csv("data/github_repos_wk1.csv")
-    github_df = dt_user.merge(dt_repo, on="userId")
-    return github_df.head(2)
+    github_df = dt_user.merge(dt_repo, on="userId").head(2)
+    github_df_dict = github_df.to_json()
+    return json.loads(github_df_dict)
 
 
 def get_analysis_dict(ti)->dict:
@@ -126,7 +216,8 @@ def get_analysis_dict(ti)->dict:
     Returns:
         dict: analysis data dictionary
     """
-    github_df = ti.xcom_pull(task_ids="read_data_")
+    github_df_dict = ti.xcom_pull(task_ids="read_data_")
+    github_df = pd.DataFrame(github_df_dict)
     github_analysis_dict = get_github_analysis_dict(github_df=github_df)
     return github_analysis_dict
 
@@ -141,7 +232,8 @@ def get_userid_list(ti)->list:
     Returns:
         list: list of userIds
     """
-    github_df = ti.xcom_pull(task_ids="read_data_")
+    github_df_dict = ti.xcom_pull(task_ids="read_data_")
+    github_df = pd.DataFrame(github_df_dict)
     userid_list = github_df["userId"].tolist()
     return userid_list
 
@@ -210,6 +302,7 @@ def get_updated_get_analysis_dict(ti)->dict:
         github_analysis_dict[_id]["metrics_rank"] = ranks
     return github_analysis_dict
 
+
 def get_user_df(ti)->pd.DataFrame:
     """
     Gets the user data from the API and store it in a dataframe
@@ -222,14 +315,16 @@ def get_user_df(ti)->pd.DataFrame:
     """
     github_analysis_dict = ti.xcom_pull(task_ids="get_updated_get_analysis_dict_")
     userid_list = ti.xcom_pull(task_ids="get_userid_list_")
-    trainee_df = ti.xcom_pull(task_ids="get_trainee_df_")
+    trainee_df_dict = ti.xcom_pull(task_ids="get_trainee_df_")
+    trainee_df = pd.DataFrame(trainee_df_dict)
 
     # get the user dataframe
     user_dict = get_df_dict(user_df_cols, "user", userid_list, github_analysis_dict)
     user_df = get_df("week1", user_dict).merge(trainee_df, on="userId")
     # drop userid column
     user_df.drop(["userId"],axis=1, inplace=True)
-    return user_df
+    user_df_dict = user_df.to_json()
+    return json.loads(user_df_dict)
 
 
 def get_repo_meta_df(ti)->pd.DataFrame:
@@ -244,7 +339,8 @@ def get_repo_meta_df(ti)->pd.DataFrame:
     """
     github_analysis_dict = ti.xcom_pull(task_ids="get_updated_get_analysis_dict_")
     repo_name_list = ti.xcom_pull(task_ids="get_repo_name_list_")
-    trainee_df = ti.xcom_pull(task_ids="get_trainee_df_")
+    trainee_df_dict = ti.xcom_pull(task_ids="get_trainee_df_")
+    trainee_df = pd.DataFrame(trainee_df_dict)
     userid_list = ti.xcom_pull(task_ids="get_userid_list_")
 
     # get the repo meta data dataframe
@@ -252,8 +348,8 @@ def get_repo_meta_df(ti)->pd.DataFrame:
     repo_meta_df = get_df("week1", repo_meta_dict).merge(trainee_df, on="userId")
     # drop userid column
     repo_meta_df.drop(["userId"],axis=1, inplace=True)
-
-    return repo_meta_df
+    repo_meta_df_dict = repo_meta_df.to_json()
+    return json.loads(repo_meta_df_dict)
 
 
 def get_repo_analysis_df(ti)->pd.DataFrame:
@@ -267,7 +363,8 @@ def get_repo_analysis_df(ti)->pd.DataFrame:
         pd.DataFrame: repo analysis dataframe
     """
     github_analysis_dict = ti.xcom_pull(task_ids="get_updated_get_analysis_dict_")
-    trainee_df = ti.xcom_pull(task_ids="get_trainee_df_")
+    trainee_df_dict = ti.xcom_pull(task_ids="get_trainee_df_")
+    trainee_df = pd.DataFrame(trainee_df_dict)
     userid_list = ti.xcom_pull(task_ids="get_userid_list_")
 
    # get repo analysis dataframe
@@ -275,8 +372,8 @@ def get_repo_analysis_df(ti)->pd.DataFrame:
     repo_analysis_df = get_df("week1", repo_analysis_dict).merge(trainee_df, on="userId")
     # drop userid column
     repo_analysis_df.drop(["userId"],axis=1, inplace=True)
-
-    return repo_analysis_df
+    repo_analysis_df_dict = repo_analysis_df.to_json()
+    return json.loads(repo_analysis_df_dict)
 
 
 def get_repo_metrics_df(ti)->pd.DataFrame:
@@ -290,7 +387,8 @@ def get_repo_metrics_df(ti)->pd.DataFrame:
         pd.DataFrame: repo metrics dataframe
     """
     github_analysis_dict = ti.xcom_pull(task_ids="get_updated_get_analysis_dict_")
-    trainee_df = ti.xcom_pull(task_ids="get_trainee_df_")
+    trainee_df_dict = ti.xcom_pull(task_ids="get_trainee_df_")
+    trainee_df = pd.DataFrame(trainee_df_dict)
     userid_list = ti.xcom_pull(task_ids="get_userid_list_")
 
     # get repo metrics dataframe
@@ -298,8 +396,9 @@ def get_repo_metrics_df(ti)->pd.DataFrame:
     repo_metrics_df = get_df("week1", repo_metrics_dict).merge(trainee_df, on="userId")
     # drop userid column
     repo_metrics_df.drop(["userId"],axis=1, inplace=True)
+    repo_metrics_df_dict = repo_metrics_df.to_json()
+    return json.loads(repo_metrics_df_dict)
 
-    return repo_metrics_df
 
 def get_metrics_summary_df(ti)->pd.DataFrame:
     """
@@ -316,8 +415,9 @@ def get_metrics_summary_df(ti)->pd.DataFrame:
     # metrics summary dataframe
     metrics_summary_dict = get_metric_summary_dict(cat_dict)
     metrics_summary_df = get_df("week1", metrics_summary_dict)
+    metrics_summary_df_dict = metrics_summary_df.to_json()
+    return json.loads(metrics_summary_df_dict)
 
-    return metrics_summary_df
 
 
 def get_strapi_table_pairing(ti)->dict:
@@ -354,9 +454,8 @@ def upload_into_strapi_tables(ti)->None:
         None
     """
     strapi_table_pairing = ti.xcom_pull(task_ids="get_strapi_table_pairing_dict_")
+    strapi_table_pairing = {k:pd.DataFrame(v) for k,v in strapi_table_pairing.items()}
     upload_to_strapi(strapi_table_pairing, token=False)
-
-
 
 
 
@@ -375,23 +474,30 @@ with DAG("github_analyzer", # Dag id
          default_args=DAG_CONFIG,
          catchup=False,
          schedule_interval='*/15 * * * * '
-        ) as dag:
-     # Tasks are implemented under the dag object
-    run_api_ = PythonOperator(
-            task_id="run_api_",
-            python_callable= run_api
-        )
+        ) as dag: # DAG object
     get_trainee_dict_ = PythonOperator(
             task_id="get_trainee_dict_",
             python_callable= get_trainee_dict
         )
-    choose_path_after_trainee_data_ = BranchPythonOperator(
+    get_github_token_ = PythonOperator(
+            task_id="get_github_token_",
+            python_callable= get_github_token
+        )
+    choose_path_after_trainee_data_ = BranchPythonOperator( 
             task_id="choose_path_after_trainee_data_",
             python_callable= choose_path_after_trainee_data
         )
-    exit_with_error_ = PythonOperator(
-            task_id="exit_with_error_",
-            python_callable= exit_with_error
+    choose_path_after_github_token_ = BranchPythonOperator( 
+            task_id="choose_path_after_github_token_",
+            python_callable= choose_path_after_github_token
+        )
+    exit_with_error_trainee_ = PythonOperator(
+            task_id="exit_with_error_trainee_",
+            python_callable= exit_with_error_trainee
+        )
+    exit_with_error_token_ = PythonOperator(
+            task_id="exit_with_error_token_",
+            python_callable= exit_with_error_github_token
         )
     get_trainee_df_ = PythonOperator(
             task_id="get_trainee_df_",
@@ -454,11 +560,13 @@ with DAG("github_analyzer", # Dag id
             python_callable= upload_into_strapi_tables
         )
 
-    run_api_ >> get_trainee_dict_ >> choose_path_after_trainee_data_ >> exit_with_error_
-    run_api_ >> get_trainee_dict_ >> choose_path_after_trainee_data_ >> get_trainee_df_ \
-    >> read_data_ >> get_userid_list_ >> get_analysis_dict_ >> get_repo_name_list_ >> get_category_dict_  \
-    >> get_rank_dict_ >> get_updated_get_analysis_dict_ >> [get_user_df_, get_repo_meta_df_, \
-    get_repo_analysis_df_, get_repo_metrics_df_, get_metrics_summary_df_] >> get_strapi_table_pairing_dict_\
-    >> upload_into_strapi_tables_ 
+    get_github_token_ >> choose_path_after_github_token_ >> exit_with_error_token_
+    
+    choose_path_after_github_token_ >> get_trainee_dict_ >> choose_path_after_trainee_data_ >> exit_with_error_trainee_
+    
+    choose_path_after_trainee_data_ >> get_trainee_df_ >> read_data_ >> get_userid_list_ >> get_analysis_dict_ \
+    >> get_repo_name_list_ >> get_category_dict_ >> get_rank_dict_ >> get_updated_get_analysis_dict_ \
+    >> [get_user_df_, get_repo_meta_df_, get_repo_analysis_df_, get_repo_metrics_df_, get_metrics_summary_df_] \
+    >> get_strapi_table_pairing_dict_ >> upload_into_strapi_tables_ 
     
     

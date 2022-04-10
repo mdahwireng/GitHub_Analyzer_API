@@ -4,6 +4,8 @@ import requests
 import time
 import os
 
+from app import get_user, single_repos_meta_single_repos_pyanalysis
+
 github_token = "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"
 
 if os.path.exists(".env/secret.json"):
@@ -185,13 +187,14 @@ def get_repo_meta_repo_pymetrics(username, repo_name, token=github_token ,api_ro
 
 
 
-def get_github_analysis_dict(github_df)->dict:
+def get_github_analysis_dict(github_df, token=github_token)->dict:
     """
-    Gets the github analysis dict for the given github dataframe.
+    Gets the github analysis dict for the given github dataframe and token.
     Returns the github analysis dict.
 
     Args:
         github_df (pandas.DataFrame): The github dataframe.
+        token (str): github personal access token.
 
     Returns:
         dict: The github analysis dict.
@@ -199,6 +202,7 @@ def get_github_analysis_dict(github_df)->dict:
     _dict = dict()
     counter = 0
     for _, userid, user, repo_name in github_df.itertuples():
+        print("Retrieving data for user: {} and repo: {}...".format(user, repo_name))
         hld = dict()
         if counter != 0 and counter%5 == 0:
             print(user)
@@ -206,9 +210,9 @@ def get_github_analysis_dict(github_df)->dict:
             time.sleep(60)
             print("Resumed...\n")
 
-        repo_meta_repo_pyanalysis = get_repo_meta_repo_pymetrics(username=user, repo_name=repo_name)
+        repo_meta_repo_pyanalysis = single_repos_meta_single_repos_pyanalysis(user, token, repo_name, api=False)
 
-        hld["user"] = get_user_meta(username=user)
+        hld["user"] = get_user(user, token, api=False)
         hld["repo_meta"] = repo_meta_repo_pyanalysis["repo_meta"]
 
         try:
@@ -218,6 +222,7 @@ def get_github_analysis_dict(github_df)->dict:
 
         _dict[userid] =  hld
         counter += 1
+        print("Data for user: {} and repo: {} retrieved\n".format(user, repo_name))
     return json.loads(json.dumps(_dict))
 
 def get_metric_category(val, break_points, reverse=False)->str:
