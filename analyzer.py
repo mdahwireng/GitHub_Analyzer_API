@@ -37,7 +37,7 @@ if github_token:
         # read in the data
         dt_user = pd.read_csv("data/github_usernames.csv")
         dt_repo = pd.read_csv("data/github_repos_wk1.csv")
-        github_df = dt_user.merge(dt_repo, on="userId").head(2)
+        github_df = dt_user.merge(dt_repo, on="userId")
 
 
         # set needed variables

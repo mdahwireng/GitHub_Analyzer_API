@@ -201,7 +201,7 @@ def read_data()->pd.DataFrame:
     # read in the data
     dt_user = pd.read_csv("data/github_usernames.csv")
     dt_repo = pd.read_csv("data/github_repos_wk1.csv")
-    github_df = dt_user.merge(dt_repo, on="userId").head(2)
+    github_df = dt_user.merge(dt_repo, on="userId")
     github_df_dict = github_df.to_json()
     return json.loads(github_df_dict)
 
