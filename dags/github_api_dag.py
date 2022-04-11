@@ -473,7 +473,7 @@ DAG_CONFIG = {
 with DAG("github_analyzer", # Dag id
          default_args=DAG_CONFIG,
          catchup=False,
-         schedule_interval='*/15 * * * * '
+         schedule_interval='0 0 * * 1 '
         ) as dag: # DAG object
     get_trainee_dict_ = PythonOperator(
             task_id="get_trainee_dict_",
