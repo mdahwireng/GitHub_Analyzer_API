@@ -6,7 +6,7 @@ import os
 
 from app import get_user, single_repos_meta_single_repos_pyanalysis
 
-github_token = "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"
+github_token = None
 
 if os.path.exists(".env/secret.json"):
     
