@@ -314,7 +314,9 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, api=True)-
             return {"repo_meta":dt, "analysis_results":{"error":"repository does not contain {} files".format(lang_list)}}
 
     else:
-        return jsonify({"repo_meta":{"error":resp.json()}, "analysis_results":{"error":resp.json()}})
+        if api:
+            return jsonify({"repo_meta":{"error":resp.json()}, "analysis_results":{"error":"Not Found"}})
+        return {"repo_meta":{"error":resp.json()}, "analysis_results":{"error":"Not Found"}}
         
 
 
