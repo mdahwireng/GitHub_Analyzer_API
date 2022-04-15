@@ -42,14 +42,17 @@ if github_token:
 
         # set needed variables
         metrics_list = ["additions","avg_lines_per_class","avg_lines_per_function","avg_lines_per_method",
-                            "cc","difficulty",'effort','lloc','loc','mi','num_classes','num_functions','num_methods',
-                            'sloc','time']
+                        "cc","difficulty",'effort','lloc','loc','mi','num_classes','num_functions','num_methods',
+                        'sloc','time']
+        
+        sum_list =  ["additions","difficulty",'effort','lloc','loc','num_classes','num_functions','num_methods',
+                     'sloc','time']
 
         user_df_cols = ['avatar_url', 'bio', 'commits', 'email', 'followers', 'following', 'html_url', 
                         'issues', 'name', 'public_repos', 'pull_requests']
 
-        repo_df_cols = ['branches', 'clones', 'contributors', 'description', 'forks', 'html_url', 
-                        'languages', 'total_commits', 'visitors']
+        repo_df_cols = ['branches', 'contributors', 'description', 'forks', 'html_url', 'languages', 'total_commits', 
+                        "interested_files", "num_ipynb", "num_js", "num_py", "num_dirs", "num_files"]
 
         repo_analysis_df_cols = ['additions', 'avg_lines_per_class', 'avg_lines_per_function', 'avg_lines_per_method',
                                 'blank', 'cc', 'cc_rank', 'comments', 'difficulty', 'effort', 'lloc', 'loc', 'mi', 
@@ -80,7 +83,7 @@ if github_token:
         repo_name_list = get_repo_names(userid_list, github_analysis_dict)
 
         # create the metrics summary dict
-        cat_dict = Metrics_Summary_Dict(metrics_list, github_analysis_dict).get_metrics_summary_dict()
+        cat_dict = Metrics_Summary_Dict(metrics_list, github_analysis_dict, sum_list).get_metrics_summary_dict()
 
         rank_dict = get_rank_dict(github_analysis_dict, cat_dict)
 

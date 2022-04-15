@@ -20,12 +20,15 @@ from modules.strapi_methods import get_table_data_strapi, upload_to_strapi
 metrics_list = ["additions","avg_lines_per_class","avg_lines_per_function","avg_lines_per_method",
                     "cc","difficulty",'effort','lloc','loc','mi','num_classes','num_functions','num_methods',
                     'sloc','time']
+        
+sum_list =  ["additions","difficulty",'effort','lloc','loc','num_classes','num_functions','num_methods',
+                'sloc','time']
 
 user_df_cols = ['avatar_url', 'bio', 'commits', 'email', 'followers', 'following', 'html_url', 
                 'issues', 'name', 'public_repos', 'pull_requests']
 
-repo_df_cols = ['branches', 'clones', 'contributors', 'description', 'forks', 'html_url', 
-                'languages', 'total_commits', 'visitors']
+repo_df_cols = ['branches', 'contributors', 'description', 'forks', 'html_url', 'languages', 'total_commits', 
+                "interested_files", "num_ipynb", "num_js", "num_py", "num_dirs", "num_files"]
 
 repo_analysis_df_cols = ['additions', 'avg_lines_per_class', 'avg_lines_per_function', 'avg_lines_per_method',
                         'blank', 'cc', 'cc_rank', 'comments', 'difficulty', 'effort', 'lloc', 'loc', 'mi', 
@@ -265,7 +268,7 @@ def get_category_dict(ti)->dict:
         dict: category data dictionary
     """
     github_analysis_dict = ti.xcom_pull(task_ids="get_analysis_dict_")
-    cat_dict = Metrics_Summary_Dict(metrics_list=metrics_list, github_analysis_dict=github_analysis_dict).get_metrics_summary_dict()
+    cat_dict = Metrics_Summary_Dict(metrics_list=metrics_list, github_analysis_dict=github_analysis_dict, sum_list=sum_list).get_metrics_summary_dict()
     return cat_dict
 
 

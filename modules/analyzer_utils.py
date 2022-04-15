@@ -304,9 +304,12 @@ def get_metric_summary_dict(cat_dict)->dict:
         dict: The metric summary dict.
     """
     metrics = list(cat_dict.keys())
-    _dict = {"max":[cat_dict[m]["max"] for m in metrics],
+    _dict = {
+            "max":[cat_dict[m]["max"] for m in metrics],
             "min": [cat_dict[m]["min"] for m in metrics],
-            "break_points": [cat_dict[m]["break_points"] for m in metrics]}
+            "break_points": [cat_dict[m]["break_points"] for m in metrics],
+            "sum": [cat_dict[m]["sum"] for m in metrics]
+            }
     _dict["metrics"] = metrics
     return _dict
 
@@ -345,7 +348,7 @@ def get_repo_df_dict(df_cols,  key, userid_list, repo_name_list, results_dict)->
         dict: The repo df dict.
     """
     _dict = {col:[results_dict[user_id][key][rn][col]
-                  if "error" not in results_dict[user_id][key] 
+                  if "error" not in results_dict[user_id][key] and rn != None and col in results_dict[user_id][key][rn]
                   else "N/A"
                   for user_id,rn in zip(userid_list,repo_name_list)]
              for col in df_cols}

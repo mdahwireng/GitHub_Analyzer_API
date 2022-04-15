@@ -7,7 +7,7 @@ class Metrics_Summary_Dict:
         set_min_max_dict(): Sets the min and max dict.
         get_category_break_points(): Returns the category break points.
     """
-    def __init__(self, metrics_list, github_analysis_dict)->None:
+    def __init__(self, metrics_list, github_analysis_dict, sum_list)->None:
         """
         Initialize the class.
         Returns None.
@@ -15,13 +15,16 @@ class Metrics_Summary_Dict:
         Parameters:
         metrics_list (list): list of metrics to be analyzed.
         github_analysis_dict (dict): dictionary of github analysis data.
+        sum_list (list): list of metrics for which a sum should be generated.
 
         Returns:
             None.
         """
         self.metrics_list = metrics_list
         self.df = github_analysis_dict
+        self.sum_list = sum_list
         self.metrics_summary_dict = dict()
+        self.sum_dict = dict()
 
     def set_min_max_dict(self)->None:
         """
@@ -51,6 +54,24 @@ class Metrics_Summary_Dict:
                     if val > hld[k]["max"]:
                         min_max_dict[k]["max"] = val
         self.min_max_dict =  min_max_dict
+
+    def set_sum_dict(self)->None:
+        """
+        Sets values for self.sum_dict.
+
+        Returns:
+            None.
+        """
+        sum_dict = {m:(0 if m in self.sum_list else None) for m  in self.metrics_list}
+
+        for m in self.sum_list:
+            for user_id in self.df.keys():
+                if "error" not in self.df[user_id]["repo_anlysis_metrics"]:
+                    val = self.df[user_id]["repo_anlysis_metrics"][m]
+                    sum_dict[m] += val
+
+        self.sum_dict = sum_dict
+
 
 
     def get_break_points(self,_min,_max, num_cat=4)->list:
@@ -101,8 +122,10 @@ class Metrics_Summary_Dict:
         Returns:
             dict: The metrics summary dict.
         """
+        self.set_sum_dict()
         category_break_points = self.get_category_break_points()
         self.metrics_summary_dict.update(self.min_max_dict)
         for k,v in category_break_points.items():
             self.metrics_summary_dict[k]["break_points"] = v["break_points"]
+            self.metrics_summary_dict[k]["sum"] = self.sum_dict[k]
         return self.metrics_summary_dict

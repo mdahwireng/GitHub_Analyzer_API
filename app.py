@@ -187,12 +187,12 @@ def get_single_repo_pyanalysis(user, token, repo_name, api=True)->json:
                 if api:
                     return jsonify({"error":"Not Found"}) 
                 return {"error":"Not Found"} 
-        lang_list = ["Python"]
+        lang_list = ["Python", "Jupyter Notebook"]
     
         # check if the repo contains python files
         if  check_lang_exit(user=user, repo=repo_name, headers=headers, lang_list=lang_list):
 
-            stderr, return_code, additions_dict, files = run_to_get_adds_and_save_content(repo_name, repo_dict=repo_details[0], file_ext=[".py"])
+            stderr, return_code, additions_dict, files = run_to_get_adds_and_save_content(repo_name, repo_dict=repo_details[0], file_ext=[".py",".ipynb"])
 
             # if there is no error
             if return_code == 0:
@@ -276,12 +276,15 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, api=True)-
                 
         dt = retrieve_repo_meta(resp_json=resp_dict, headers=headers, user=user)
 
-        lang_list = ["Python"]
+        lang_list = ["Python", "Jupyter Notebook"]
     
         # check if the repo contains python files
         if  check_lang_exit(user=user, repo=repo_name, headers=headers, lang_list=lang_list):
 
-            stderr, return_code, additions_dict, files = run_to_get_adds_and_save_content(repo_name, repo_dict=repo_details[0], file_ext=[".py"])
+            stderr, return_code, additions_dict, files, file_check_results = run_to_get_adds_and_save_content(repo_name, repo_dict=repo_details[0], file_ext=[".py", ".ipynb"])
+
+            # Add file check results to repo meta
+            dt[repo_name].update(file_check_results)
 
             # if there is no error
             if return_code == 0:
