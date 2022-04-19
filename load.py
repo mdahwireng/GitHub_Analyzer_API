@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import pandas as pd
+import requests
 from app import get_user, single_repos_meta_single_repos_pyanalysis
 
 
@@ -39,7 +40,7 @@ if github_token:
         # read in the data
         dt_user = pd.read_csv("data/github_usernames.csv")
         dt_repo = pd.read_csv("data/github_repos_wk1.csv")
-        github_df = dt_user.merge(dt_repo, on="userId")
+        github_df = dt_user.merge(dt_repo, on="userId").head(1)
 
 
         # set needed variables
@@ -95,7 +96,7 @@ if github_token:
             repo_meta_repo_pyanalysis = single_repos_meta_single_repos_pyanalysis(user, github_token, repo_name, api=False)
 
             
-            hld["repo_meta"] = repo_meta_repo_pyanalysis["repo_meta"]
+            hld["repo_meta"] = repo_meta_repo_pyanalysis["repo_meta"][repo_name]
 
             try:
                 hld["repo_anlysis_metrics"] = repo_meta_repo_pyanalysis["analysis_results"]["repo_summary"]
@@ -118,7 +119,7 @@ if github_token:
                 # get the user data dict
                 print("Creating user data dict...\n")
                 user_dict = {col:(_dict[userid]["user"][col]
-                    if col in _dict[userid]["user"].keys() else None)  for col in repo_df_cols}
+                    if col in _dict[userid]["user"].keys() else None)  for col in user_df_cols}
 
                 user_dict["userId"] = userid
                 user_dict["trainee"] = trainee
@@ -126,8 +127,51 @@ if github_token:
                 print("User data dict created\n")
 
                 # check for entry in strapi
-                # if entry not in strapi, upload
-                # if entry in strapi and data is not the same, update
+                headers = {"Content-Type": "application/json"}
+                pluralapi = "github-user-metas"
+                week = "week1"
+                q_url = "https://dev-cms.10academy.org/api/{}?filters[trainee][id][$eq]={}&pagination[start]=0&pagination[limit]=100".format(pluralapi, trainee)
+
+                r = requests.get(
+                                q_url,
+                                headers = headers
+                                ).json()
+
+                if "error" not in r:
+                    # check if entry exists
+                    print("Checking if entry exists in strapi...\n")
+
+                    if len(r["data"]) == 0:
+                        r_list = []
+                    else:
+                        r_list = [d for d in r['data'] if d["attributes"]["week"] == week]
+
+                    if len(r_list) == 0:
+                        # create entry
+                        print("Creating entry in strapi...\n")
+                        ######################################
+                        # create entry in strapi
+                    else:
+                        #check if entry is the same
+                        print("Checking if entry is the same...\n")
+                        
+                        # get the strapi entry
+                        srapi_dict = {col:r_list[0]['attributes'][col] if not isinstance(r_list[0]['attributes'][col], float) 
+                                else round(r_list[0]['attributes'][col],10) for col in user_df_cols}
+                        
+                        # get the repo analysis entry
+                        user_dict = json.loads(json.dumps({col:(user_dict[col] if not isinstance(user_dict[col], float) 
+                                else round(user_dict[col],10)) for col in user_df_cols}))
+
+                        if srapi_dict == user_dict:
+                            print("Entry is the same...\n")
+                            pass
+                        else:
+                            print("Entry is not the same...\n")
+                            # update entry
+                            print("Updating entry in strapi...\n")
+                            ######################################
+                            # update entry in strapi
             else:
                 print("Error retrieving user data for user: {} and repo: {}\n".format(user, repo_name))
                 user_error_dict["userid"].append(userid)
@@ -136,7 +180,6 @@ if github_token:
                 user_error_dict["error"].append(hld["user"])
 
             # get the repo data dict
-            print("Creating repo dict...")
             if "error" not in hld["repo_meta"]:
                 print("Creating repo data dict...\n")
                 repo_dict = {col:(_dict[userid]["repo_meta"][col]
@@ -148,9 +191,49 @@ if github_token:
                 print("Repo data dict created\n")
 
                 # check for entry in strapi
-                # if entry not in strapi, upload
-                # if entry in strapi and data is not the same, update
+                headers = {"Content-Type": "application/json"}
+                pluralapi = "github-repo-metas"
+                week = "week1"
+                q_url = "https://dev-cms.10academy.org/api/{}?filters[trainee][id][$eq]={}&pagination[start]=0&pagination[limit]=100".format(pluralapi, trainee)
 
+                r = requests.get(
+                                q_url,
+                                headers = headers
+                                ).json()
+
+                if "error" not in r:
+                    # check if entry exists
+                    if len(r["data"]) == 0:
+                        r_list = []
+                    else:
+                        r_list = [d for d in r['data'] if d["attributes"]["week"] == week]
+
+                    if len(r_list) == 0:
+                        # create entry
+                        print("Creating entry in strapi...\n")
+                        ######################################
+                        # create entry in strapi
+                    else:
+                        #check if entry is the same
+                        print("Checking if entry is the same...\n")
+                        
+                        # get the strapi entry
+                        srapi_dict = {col:r_list[0]['attributes'][col] if not isinstance(r_list[0]['attributes'][col], float) 
+                                else round(r_list[0]['attributes'][col],10) for col in repo_df_cols}
+                        
+                        # get the repo analysis entry
+                        repo_dict = json.loads(json.dumps({col:(repo_dict[col] if not isinstance(repo_dict[col], float) 
+                                else round(repo_dict[col],10)) for col in repo_df_cols}))
+
+                        if srapi_dict == repo_dict:
+                            print("Entry is the same...\n")
+                            pass
+                        else:
+                            print("Entry is not the same...\n")
+                            # update entry
+                            print("Updating entry in strapi...\n")
+                            ######################################
+                            # update entry in strapi
             else:
                 print("Error retrieving repo data for user: {} and repo: {}\n".format(user, repo_name))
                 repo_meta_error_dict["userid"].append(userid)
@@ -161,17 +244,64 @@ if github_token:
             
             if "error" not in hld["repo_anlysis_metrics"]:
                 print("Creating repo analysis dict...\n")
+                
                 repo_analysis_dict = {col:(_dict[userid]["repo_anlysis_metrics"][col]
-                    if col in _dict[userid]["repo_anlysis_metrics"].keys() else None)  for col in repo_analysis_df_cols}
+                                      if col in _dict[userid]["repo_anlysis_metrics"].keys() else None)  
+                                      for col in repo_analysis_df_cols}
 
                 repo_analysis_dict["userId"] = userid
                 repo_analysis_dict["trainee"] = trainee
 
                 print("Repo analysis dict created\n")
 
+
                 # check for entry in strapi
-                # if entry not in strapi, upload
-                # if entry in strapi and data is not the same, update
+                headers = {"Content-Type": "application/json"}
+                pluralapi = "github-repo-metrics"
+                week = "week1"
+                q_url = "https://dev-cms.10academy.org/api/{}?filters[trainee][id][$eq]={}&pagination[start]=0&pagination[limit]=100".format(pluralapi, trainee)
+
+                r = requests.get(
+                                q_url,
+                                headers = headers
+                                ).json()
+
+                if "error" not in r:
+                    # check if entry exists
+                    print("Checking if entry exists...\n")
+
+                    if len(r["data"]) == 0:
+                        r_list = []
+                    else:
+                        r_list = [d for d in r['data'] if d["attributes"]["week"] == week]
+
+                    if len(r_list) == 0:
+                        # create entry
+                        print("Entry does not exist...\n")
+                        print("Creating entry in strapi...\n")
+                        ######################################
+                        # create entry in strapi
+                    else:
+                        #check if entry is the same
+                        print("Checking if entry is the same...\n")
+                        
+                        # get the strapi entry
+                        srapi_dict = {col:r_list[0]['attributes'][col] if not isinstance(r_list[0]['attributes'][col], float) 
+                                else round(r_list[0]['attributes'][col],10) for col in repo_analysis_df_cols}
+                        
+                        # get the repo analysis entry
+                        repo_analysis_dict = json.loads(json.dumps({col:(repo_analysis_dict[col] if not isinstance(repo_analysis_dict[col], float) 
+                                else round(repo_analysis_dict[col],10)) for col in repo_analysis_df_cols}))
+
+                        if srapi_dict == repo_analysis_dict:
+                            print("Entry is the same...\n")
+                            pass
+                        else:
+                            print("Entry is not the same...\n")
+                            # update entry
+                            print("Updating entry in strapi...\n")
+                            ######################################
+                            # update entry in strapi
 
             else:
                 print("Error retrieving repo analysis data for user: {} and repo: {}\n".format(user, repo_name))
