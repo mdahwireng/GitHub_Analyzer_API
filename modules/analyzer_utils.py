@@ -399,3 +399,23 @@ def get_df(week, _dict)-> pd.DataFrame:
     _df["week"] = week
     
     return _df
+
+
+
+def get_break_points(_min,_max, num_cat=4)->list:
+    """
+    Gets the break points for the given min and max values.
+    Returns the break points.
+
+        Args:
+            _min (int): The min value.
+            _max (int): The max value.
+            num_cat (int): The number of categories.
+
+        Returns:
+            list: The break points.
+    """
+    div = (_max  - _min)/num_cat
+    if div == 0:
+        return [0 for i in range(num_cat)]
+    return [_min + (i*div) for i in range(1,num_cat)]

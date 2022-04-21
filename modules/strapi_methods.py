@@ -38,6 +38,48 @@ def insert_data_strapi(data, pluralapi,token=False)->None:
     
     except Exception as e:
         print("Error: {}".format(e))
+
+
+def update_data_strapi(data, pluralapi,entry_id, token=False)->None:
+    """
+    Update data in strapi table given data, pluralapi and strapi token
+    Returns None
+
+    Args:
+        data: json data to be updated
+        pluralapi: plural api of the table in which data is to be updated
+        token: strapi token to be used for authentication
+        entry_id: strapi entry id of the data to be updated
+
+    Returns:
+        None
+    """
+    # set headers for authentication
+    if token:
+        headers = { "Authorization": "Bearer {}".format(token), "Content-Type": "application/json"}
+    else:
+        headers = {"Content-Type": "application/json"}
+    
+    insert_url =  "https://dev-cms.10academy.org/api/{}/{}".format(pluralapi,entry_id)
+    
+    try:
+        r = requests.put(
+                        insert_url,
+                        data = json.dumps({"data":data}),
+                        headers = headers
+                        ).json()
+        
+        if "error" in r:
+            print("Error: {}".format(r["error"]))
+        
+        else:
+            print("Data updated successfully into {}".format(pluralapi))
+            print(r["data"],"\n")
+    
+    except Exception as e:
+        print("Error: {}".format(e))
+
+
     
     
 
