@@ -34,7 +34,7 @@ def get_id_userid_df(data_dict)->pd.DataFrame:
         pd.DataFrame: The id and userid dataframe.
     """
     df_dict = {"trainee":[d["id"] for d in data_dict],
-               "userId": [d["attributes"]["userId"] for d in data_dict]}
+               "userId": [d["attributes"]["trainee_id"] for d in data_dict]}
     df = pd.DataFrame(df_dict)
     return df
 
@@ -419,3 +419,56 @@ def get_break_points(_min,_max, num_cat=4)->list:
     if div == 0:
         return [0 for i in range(num_cat)]
     return [_min + (i*div) for i in range(1,num_cat)]
+
+# get repo meta data and analysis data
+            
+
+def get_repo_meta_pyanalysis(user, github_token, repo_name)->dict:
+    """
+    Gets the repo meta data and analysis data.
+    Returns the repo meta data and analysis data.
+
+    Args:
+        user (str): The user.
+        github_token (str): The github token.
+        repo_name (str): The repo name.
+
+    Returns:
+        dict: The repo meta data and analysis data.
+    """
+    repo_meta_repo_pyanalysis = single_repos_meta_single_repos_pyanalysis(user, github_token, repo_name, api=False)
+
+    hld = dict()
+    try:
+        hld["repo_meta"] = repo_meta_repo_pyanalysis["repo_meta"][repo_name]
+
+    except:
+        hld["repo_meta"] = repo_meta_repo_pyanalysis["repo_meta"]
+
+    try:
+        hld["repo_anlysis_metrics"] = repo_meta_repo_pyanalysis["analysis_results"]["repo_summary"]
+    except:
+        hld["repo_anlysis_metrics"] = repo_meta_repo_pyanalysis["analysis_results"]
+
+    return hld
+
+
+def normalize_repo_data(data_dict, starter_code_ref_basevalues)->dict:
+    """
+    Normalizes the repo data.
+    Returns the normalized repo data.
+
+    Args:
+        data_dict (dict): The repo data dict.
+        starter_code_ref_basevalues (dict): The starter code reference basevalues dict.
+
+    Returns:
+        dict: The normalized repo data.
+    """
+    _dict = {
+             k:(data_dict[k] - starter_code_ref_basevalues[k] 
+             if k in starter_code_ref_basevalues.keys() else data_dict[k]) 
+             for k in data_dict
+             }
+    
+    return _dict
