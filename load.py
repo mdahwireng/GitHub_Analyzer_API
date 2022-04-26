@@ -17,7 +17,7 @@ if not cpath in sys.path:
 
 from modules.strapi_methods import get_table_data_strapi, insert_data_strapi, update_data_strapi, upload_to_strapi    
 from modules.Category_Dict import Metrics_Summary_Dict
-from modules.analyzer_utils import get_break_points, get_df, get_df_dict, get_github_analysis_dict, get_id_userid_df, get_metric_category, get_metric_summary_dict, get_rank_dict, get_repo_df_dict, get_repo_names
+from modules.analyzer_utils import get_break_points, get_df, get_df_dict, get_github_analysis_dict, get_id_userid_df, get_metric_category, get_metric_summary_dict, get_rank_dict, get_repo_df_dict, get_repo_meta_pyanalysis, get_repo_names, normalize_repo_data
 
 if os.path.exists(".env/secret.json"):
     with open(".env/secret.json", "r") as s:
@@ -38,10 +38,58 @@ if github_token:
     if "error" not in trainee_dict:
         trainee_df = get_id_userid_df(trainee_dict)
 
+
+
         # read in the data
         dt_user = pd.read_csv("data/github_usernames.csv")
         dt_repo = pd.read_csv("data/github_repos_wk1.csv")
         github_df = dt_user.merge(dt_repo, on="userId")
+
+        starter_code_url = "https://github.com/10xac/Twitter-Data-Analysis"
+
+
+
+
+        # get reference data
+        if starter_code_url:
+            print("Computing values for starter code...\n")
+            try:
+                # get the repo name
+                starter_user_name = starter_code_url.split("/")[-2]
+                starter_repo_name = starter_code_url.split("/")[-1]
+
+                print("Starter code user name: ", starter_user_name, "\n")
+                print("Starter code repo name: ", starter_repo_name, "\n")
+
+                # set the inerested repo keys
+                interested_repo_meta_keys = ["num_ipynb", "num_js", "num_py", "num_dirs", "num_files", "total_commits"]
+                
+                interested_repo_analysis_keys = ['avg_lines_per_class', 'avg_lines_per_function', 'avg_lines_per_method', 
+                                                'difficulty', 'effort', 'lloc', 'loc', 'num_classes', 'num_functions', 
+                                                'num_methods', 'sloc', 'time']
+                combined_keys = interested_repo_meta_keys + interested_repo_analysis_keys
+
+                # get the repo analysis data
+                starter_repo_data = get_repo_meta_pyanalysis(starter_user_name, github_token, starter_repo_name)
+                starter_code_data = dict()
+                
+                if len(starter_repo_data["repo_meta"]) > 1:
+                    starter_code_data.update(starter_repo_data["repo_meta"])
+                
+                if len(starter_repo_data["repo_anlysis_metrics"]) > 1:
+                    starter_code_data.update(starter_repo_data["repo_anlysis_metrics"])
+
+                # set the base values
+
+                starter_code_ref_basevalues = {col: starter_code_data[col] for col in combined_keys if col in starter_code_data}
+            
+            except Exception as e:
+                print("Error getting starter code data \n")
+                print("Error: ", e)
+                starter_code_ref_basevalues = None
+
+        else:
+            starter_code_ref_basevalues = None 
 
 
         # set needed variables
@@ -86,6 +134,7 @@ if github_token:
         entry_made_into_analysis_table = False
 
         week="week1"
+        batch = 4
 
         for _, userid, user, repo_name in github_df.itertuples():
             print("Retrieving data for user: {} and repo: {}...".format(user, repo_name))
@@ -97,18 +146,12 @@ if github_token:
                 print("Resumed...\n")
 
             # get repo meta data and analysis data
-            repo_meta_repo_pyanalysis = single_repos_meta_single_repos_pyanalysis(user, github_token, repo_name, api=False)
+            repo_meta_repo_pyanalysis = get_repo_meta_pyanalysis(user, github_token, repo_name)
 
-            try:
-                hld["repo_meta"] = repo_meta_repo_pyanalysis["repo_meta"][repo_name]
+            hld["repo_meta"] = repo_meta_repo_pyanalysis["repo_meta"]
 
-            except:
-                hld["repo_meta"] = repo_meta_repo_pyanalysis["repo_meta"]
+            hld["repo_anlysis_metrics"] = repo_meta_repo_pyanalysis["analysis_results"]
 
-            try:
-                hld["repo_anlysis_metrics"] = repo_meta_repo_pyanalysis["analysis_results"]["repo_summary"]
-            except:
-                hld["repo_anlysis_metrics"] = repo_meta_repo_pyanalysis["analysis_results"]
 
             if len(trainee_df[trainee_df["userId"]==userid]) == 0:
                 print("User: {} not found in trainee_df\n".format(user))
@@ -215,6 +258,11 @@ if github_token:
                 repo_dict = {col:(_dict[userid]["repo_meta"][col]
                     if col in _dict[userid]["repo_meta"].keys() else None)  for col in repo_df_cols}
 
+                if starter_code_ref_basevalues:
+                    # normalize the repo data
+                    print("Normalizing repo_meta data...\n")
+                    repo_dict = normalize_repo_data(repo_dict, starter_code_ref_basevalues)
+
                 repo_dict["userId"] = userid
                 repo_dict["trainee"] = trainee
 
@@ -298,6 +346,11 @@ if github_token:
                 repo_analysis_dict = {col:(_dict[userid]["repo_anlysis_metrics"][col]
                                       if col in _dict[userid]["repo_anlysis_metrics"].keys() else None)  
                                       for col in repo_analysis_df_cols}
+                
+                # normalize the repo analysis data
+                if starter_code_ref_basevalues:
+                    print("Normalizing repo analysis data...\n")
+                    repo_analysis_dict = normalize_repo_data(repo_analysis_dict, starter_code_ref_basevalues)
 
                 repo_analysis_dict["userId"] = userid
                 repo_analysis_dict["trainee"] = trainee
@@ -522,6 +575,7 @@ if github_token:
                     # create summary metrics df
                     cat_df = pd.DataFrame(cat_dict)
                     cat_df["week"] = week
+                    cat_df["batch"] = batch
 
                     # create summary metrics data
                     cat_data = json.loads(cat_df.to_json(orient="records"))
