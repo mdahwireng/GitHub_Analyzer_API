@@ -596,6 +596,7 @@ def get_file_checks(exclude_list, file_extensions, files_to_check, dirs_to_check
     checks_results_dict = dict()
     checks_results_dict["interested_files"] = file_checks
     checks_results_dict["interested_files"].update(dir_checks)
+    checks_results_dict["interested_files"] = [{"name":k, "present":v} for k,v in checks_results_dict["interested_files"].items()]
     checks_results_dict.update(count_dict)
     checks_results_dict.update(extension_checks)
 
