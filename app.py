@@ -283,6 +283,22 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, api=True)-
 
             stderr, return_code, additions_dict, files, file_check_results = run_to_get_adds_and_save_content(repo_name, repo_dict=repo_details[0], file_ext=[".py", ".ipynb"])
 
+            # Make languages dynamic with number of files of the language
+            lang_files_pairing = {"Jupyter Notebook":"num_ipynb", "Python":"num_py", "JavaScript":"num_js"}
+
+            tmp_list = []
+            for k,v in lang_files_pairing.items():
+                for tup in dt[repo_name]["languages"]:
+                    if tup[0] == k:
+                        hld_dict = dict()
+                        hld_dict["name"] = k
+                        hld_dict["percentage"] = tup[1]
+                        hld_dict["file_count"] = file_check_results[v]
+                        tmp_list.append(hld_dict)
+            
+            # replace languages with updated values
+            dt[repo_name]["languages"] = tmp_list
+            
             # Add file check results to repo meta
             dt[repo_name].update(file_check_results)
 
