@@ -167,6 +167,9 @@ if github_token:
             
             counter += 1
             
+
+
+            ###############################################################################################
             print("Data for user: {} and repo: {} retrieved\n".format(user, repo_name))
 
             if "error" not in hld["user"]:
@@ -252,6 +255,8 @@ if github_token:
                 user_error_dict["user"].append(user)
                 user_error_dict["error"].append(hld["user"])
 
+
+            ###############################################################################################
             # get the repo data dict
             if "error" not in hld["repo_meta"]:
                 print("Creating repo data dict...\n")
@@ -339,7 +344,8 @@ if github_token:
                 repo_meta_error_dict["user"].append(user)
                 repo_meta_error_dict["error"].append(hld["repo_meta"])
             
-            
+
+            ###############################################################################################
             if len(hld["repo_anlysis_metrics"]) > 0:
                 print("Creating repo analysis dict...\n")
                 
@@ -435,6 +441,8 @@ if github_token:
                 repo_metric_error_dict["error"].append(hld["repo_anlysis_metrics"])
 
 
+        ########################################################################################################################
+
         # Save users with Github User analysis error
         if len(user_error_dict["user"]) > 0:
 
@@ -467,7 +475,8 @@ if github_token:
         if len(user_error_dict["user"]) == 0 and len(repo_meta_error_dict["user"]) == 0 and len(repo_metric_error_dict["user"]) == 0:
             print("No errors found\n\n")
     
-        
+        ########################################################################################################################
+
         if entry_made_into_analysis_table:
             print("Entry made into analysis table\n\n")
                 
@@ -568,7 +577,7 @@ if github_token:
                             print(r_list)
                             print("\n")
                     
-
+                    ########################################################################################################################
                     # get summary metrics dict
                     cat_dict = get_metric_summary_dict(cat_dict)
 
