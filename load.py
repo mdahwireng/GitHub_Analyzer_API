@@ -43,7 +43,7 @@ if github_token:
         # read in the data
         dt_user = pd.read_csv("data/github_usernames.csv")
         dt_repo = pd.read_csv("data/github_repos_wk1.csv")
-        github_df = dt_user.merge(dt_repo, on="userId")
+        github_df = dt_user.merge(dt_repo, on="trainee_id")
 
         starter_code_url = "https://github.com/10xac/Twitter-Data-Analysis"
 
@@ -100,23 +100,23 @@ if github_token:
         sum_list =  ["additions","difficulty",'effort','lloc','loc','num_classes','num_functions','num_methods',
                      'sloc','time']
 
-        user_df_cols = ["userId",'avatar_url', 'bio', 'commits', 'email', 'followers', 'following', 'html_url', 
+        user_df_cols = ["trainee_id",'avatar_url', 'bio', 'commits', 'email', 'followers', 'following', 'html_url', 
                         'issues', 'name', 'public_repos', 'pull_requests']
 
-        repo_df_cols = ["userId",'branches', 'contributors', 'description', 'forks', 'html_url', 'languages', 'total_commits', 
+        repo_df_cols = ["trainee_id",'branches', 'contributors', 'description', 'forks', 'html_url', 'languages', 'total_commits', 
                         "interested_files", "num_ipynb", "num_js", "num_py", "num_dirs", "num_files"]
 
-        repo_analysis_df_cols = ["userId",'additions', 'avg_lines_per_class', 'avg_lines_per_function', 'avg_lines_per_method',
+        repo_analysis_df_cols = ["trainee_id",'additions', 'avg_lines_per_class', 'avg_lines_per_function', 'avg_lines_per_method',
                                 'blank', 'cc', 'cc_rank', 'comments', 'difficulty', 'effort', 'lloc', 'loc', 'mi', 
                                 'mi_rank', 'multi', 'num_classes', 'num_functions', 'num_methods', 'single_comments',
                                 'sloc', 'time']
 
-        repo_metrics_cols = ["userId", 'additions', 'avg_lines_per_class', 'avg_lines_per_function', 'avg_lines_per_method', 
+        repo_metrics_cols = ["trainee_id", 'additions', 'avg_lines_per_class', 'avg_lines_per_function', 'avg_lines_per_method', 
                             'cc', 'difficulty', 'effort', 'lloc', 'loc', 'mi', 'num_classes', 'num_functions', 
                             'num_methods', 'sloc', 'time']
 
 
-        userid_list = list(github_df["userId"].values)
+        trainee_id_list = list(github_df["trainee_id"].values)
 
 
         # get the github analysis dict
@@ -128,15 +128,15 @@ if github_token:
 
         # retrive user and repo data
         counter = 0
-        user_error_dict = {"userid":[], "user":[], "repo_name":[], "error":[]}
-        repo_meta_error_dict = {"userid":[], "user":[], "repo_name":[], "error":[]}
-        repo_metric_error_dict = {"userid":[], "user":[], "repo_name":[], "error":[]}
+        user_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "error":[]}
+        repo_meta_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "error":[]}
+        repo_metric_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "error":[]}
         entry_made_into_analysis_table = False
 
         week="week1"
         batch = 4
 
-        for _, userid, user, repo_name in github_df.itertuples():
+        for _, trainee_id, user, repo_name in github_df.itertuples():
             print("Retrieving data for user: {} and repo: {}...".format(user, repo_name))
             hld = dict()
             if counter != 0 and counter%5 == 0:
@@ -153,17 +153,17 @@ if github_token:
             hld["repo_anlysis_metrics"] = repo_meta_repo_pyanalysis["analysis_results"]
 
 
-            if len(trainee_df[trainee_df["userId"]==userid]) == 0:
+            if len(trainee_df[trainee_df["trainee_id"]==trainee_id]) == 0:
                 print("User: {} not found in trainee_df\n".format(user))
                 continue
 
-            trainee = trainee_df[trainee_df["userId"]==userid].trainee.values[0]
+            trainee = trainee_df[trainee_df["trainee_id"]==trainee_id].trainee.values[0]
 
             # get user data from github api
             hld["user"] = get_user(user, github_token, api=False)
 
             _dict = dict()
-            _dict[userid] =  hld
+            _dict[trainee_id] =  hld
             
             counter += 1
             
@@ -175,10 +175,10 @@ if github_token:
             if "error" not in hld["user"]:
                 # get the user data dict
                 print("Creating user data dict...\n")
-                user_dict = {col:(_dict[userid]["user"][col]
-                    if col in _dict[userid]["user"].keys() else None)  for col in user_df_cols}
+                user_dict = {col:(_dict[trainee_id]["user"][col]
+                    if col in _dict[trainee_id]["user"].keys() else None)  for col in user_df_cols}
 
-                user_dict["userId"] = userid
+                user_dict["trainee_id"] = trainee_id
                 user_dict["trainee"] = trainee
 
                 print("User data dict created\n")
@@ -194,7 +194,7 @@ if github_token:
                                     ).json()
                 except Exception as e:
                     print("Error in getting user meta data from strapi: {}\n".format(e))
-                    user_error_dict["userid"].append(userid)
+                    user_error_dict["trainee_id"].append(trainee_id)
                     user_error_dict["user"].append(user)
                     user_error_dict["repo_name"].append(repo_name)
                     user_error_dict["error"].append(e)
@@ -250,7 +250,7 @@ if github_token:
                             update_data_strapi(data=user_dict, pluralapi=pluralapi, entry_id=r_list[0]['id'])
             else:
                 print("Error retrieving user data for user: {} and repo: {}\n".format(user, repo_name))
-                user_error_dict["userid"].append(userid)
+                user_error_dict["trainee_id"].append(trainee_id)
                 user_error_dict["repo_name"].append(repo_name)
                 user_error_dict["user"].append(user)
                 user_error_dict["error"].append(hld["user"])
@@ -260,15 +260,15 @@ if github_token:
             # get the repo data dict
             if "error" not in hld["repo_meta"]:
                 print("Creating repo data dict...\n")
-                repo_dict = {col:(_dict[userid]["repo_meta"][col]
-                    if col in _dict[userid]["repo_meta"].keys() else None)  for col in repo_df_cols}
+                repo_dict = {col:(_dict[trainee_id]["repo_meta"][col]
+                    if col in _dict[trainee_id]["repo_meta"].keys() else None)  for col in repo_df_cols}
 
                 if starter_code_ref_basevalues:
                     # normalize the repo data
                     print("Normalizing repo_meta data...\n")
                     repo_dict = normalize_repo_data(repo_dict, starter_code_ref_basevalues)
 
-                repo_dict["userId"] = userid
+                repo_dict["trainee_id"] = trainee_id
                 repo_dict["trainee"] = trainee
 
                 print("Repo data dict created\n")
@@ -286,7 +286,7 @@ if github_token:
                                     ).json()
                 except Exception as e:
                     print("Error in getting repo meta data from strapi: {}\n".format(e))
-                    repo_meta_error_dict["userid"].append(userid)
+                    repo_meta_error_dict["trainee_id"].append(trainee_id)
                     repo_meta_error_dict["user"].append(user)
                     repo_meta_error_dict["repo_name"].append(repo_name)
                     repo_meta_error_dict["error"].append(e)
@@ -339,7 +339,7 @@ if github_token:
                             update_data_strapi(data=repo_dict, pluralapi=pluralapi, entry_id=r_list[0]['id'])
             else:
                 print("Error retrieving repo data for user: {} and repo: {}\n".format(user, repo_name))
-                repo_meta_error_dict["userid"].append(userid)
+                repo_meta_error_dict["trainee_id"].append(trainee_id)
                 repo_meta_error_dict["repo_name"].append(repo_name)
                 repo_meta_error_dict["user"].append(user)
                 repo_meta_error_dict["error"].append(hld["repo_meta"])
@@ -349,8 +349,8 @@ if github_token:
             if len(hld["repo_anlysis_metrics"]) > 0:
                 print("Creating repo analysis dict...\n")
                 
-                repo_analysis_dict = {col:(_dict[userid]["repo_anlysis_metrics"][col]
-                                      if col in _dict[userid]["repo_anlysis_metrics"].keys() else None)  
+                repo_analysis_dict = {col:(_dict[trainee_id]["repo_anlysis_metrics"][col]
+                                      if col in _dict[trainee_id]["repo_anlysis_metrics"].keys() else None)  
                                       for col in repo_analysis_df_cols}
                 
                 # normalize the repo analysis data
@@ -358,7 +358,7 @@ if github_token:
                     print("Normalizing repo analysis data...\n")
                     repo_analysis_dict = normalize_repo_data(repo_analysis_dict, starter_code_ref_basevalues)
 
-                repo_analysis_dict["userId"] = userid
+                repo_analysis_dict["trainee_id"] = trainee_id
                 repo_analysis_dict["trainee"] = trainee
 
                 print("Repo analysis dict created\n")
@@ -377,7 +377,7 @@ if github_token:
                                     ).json()
                 except Exception as e:
                     print("Error in getting repo analysis data from strapi: {}\n".format(e))
-                    repo_metric_error_dict["userid"].append(userid)
+                    repo_metric_error_dict["trainee_id"].append(trainee_id)
                     repo_metric_error_dict["user"].append(user)
                     repo_metric_error_dict["repo_name"].append(repo_name)
                     repo_metric_error_dict["error"].append(e)
@@ -435,7 +435,7 @@ if github_token:
 
             else:
                 print("Error retrieving repo analysis data for user: {} and repo: {}\n".format(user, repo_name))
-                repo_metric_error_dict["userid"].append(userid)
+                repo_metric_error_dict["trainee_id"].append(trainee_id)
                 repo_metric_error_dict["repo_name"].append(repo_name)
                 repo_metric_error_dict["user"].append(user)
                 repo_metric_error_dict["error"].append(hld["repo_anlysis_metrics"])
@@ -519,7 +519,7 @@ if github_token:
 
                     for i,row in cat_df.iterrows():
                         for col in repo_metrics_cols:
-                            if col == "userId":
+                            if col == "trainee_id":
                                 rank_dict[col].append(row[col])
                             else:
                                 val = row[col]
@@ -535,7 +535,7 @@ if github_token:
                     # create rank df
                     rank_df = pd.DataFrame(rank_dict)
                     rank_df["week"] = week
-                    rank_df = rank_df.merge(trainee_df, on="userId")
+                    rank_df = rank_df.merge(trainee_df, on="trainee_id")
 
                     rank_data = json.loads(rank_df.to_json(orient="records"))
 
@@ -547,7 +547,7 @@ if github_token:
                         # check if entry exists
                         print("Checking if entry exists...\n")
                         headers = {"Content-Type": "application/json"}
-                        q_url = "https://dev-cms.10academy.org/api/{}?filters[week][$eq]={}&filters[userId][$eq]={}".format(pluralapi, week, r["userId"])
+                        q_url = "https://dev-cms.10academy.org/api/{}?filters[week][$eq]={}&filters[trainee_id][$eq]={}".format(pluralapi, week, r["trainee_id"])
                         
                         try:
                             r_list = requests.get(
@@ -556,24 +556,24 @@ if github_token:
                                             ).json()
                         
                         except Exception as e:
-                            print("Error: Retrieving data from {} for userId {} and week {}\n".format(pluralapi, r["userId"], week))
+                            print("Error: Retrieving data from {} for trainee_id {} and week {}\n".format(pluralapi, r["trainee_id"], week))
                             continue
 
 
                         if "error" not in r_list:
                             if len(r_list["data"]) > 0:
-                                print("Entry already exists for user: {} and week: {}\n".format(r["userId"], week))
+                                print("Entry already exists for user: {} and week: {}\n".format(r["trainee_id"], week))
                                 # update entry in strapi
-                                print("Updating entry for user user: {} and week: {}\n".format(r["userId"], week))
+                                print("Updating entry for user user: {} and week: {}\n".format(r["trainee_id"], week))
                                 update_data_strapi(data=r, pluralapi=pluralapi, entry_id=r_list["data"][0]['id'])
                             else:
                                 # create entry in strapi
-                                print("Entry does not exist for user: {} and week: {}\n".format(r["userId"], week))
+                                print("Entry does not exist for user: {} and week: {}\n".format(r["trainee_id"], week))
                                 print("Creating entry in strapi...\n")
                                 insert_data_strapi(data=r, pluralapi=pluralapi)
 
                         else:
-                            print("Error checking if entry exists for user: {} and week: {}\n".format(r["userId"], week))
+                            print("Error checking if entry exists for user: {} and week: {}\n".format(r["trainee_id"], week))
                             print(r_list)
                             print("\n")
                     

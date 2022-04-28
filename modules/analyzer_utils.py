@@ -25,16 +25,16 @@ if os.path.exists(".env/env_var.json"):
 def get_id_userid_df(data_dict)->pd.DataFrame:
     """
     Gets the id and userid dataframe for the given data dict.
-    Returns the id and userid dataframe.
+    Returns the id and trainee_id dataframe.
 
     Args:
         data_dict (dict): The data dict.
         
     Returns:
-        pd.DataFrame: The id and userid dataframe.
+        pd.DataFrame: The id and trainee_id dataframe.
     """
     df_dict = {"trainee":[d["id"] for d in data_dict],
-               "userId": [d["attributes"]["trainee_id"] for d in data_dict]}
+               "trainee_id": [d["attributes"]["trainee_id"] for d in data_dict]}
     df = pd.DataFrame(df_dict)
     return df
 
