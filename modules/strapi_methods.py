@@ -131,7 +131,7 @@ def get_table_data_strapi(url,token=False)->list:
             
         if "error" in r:
             print("Error: {}".format(r["error"]))
-            return [r["error"]]
+            return [{"error": r["error"]}]
         else:
             print("Data retrieved successfully from {}".format(url))
             return data
