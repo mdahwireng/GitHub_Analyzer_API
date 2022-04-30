@@ -706,8 +706,9 @@ def run_to_get_adds_and_save_content(repo_name, repo_dict, file_ext, path="./") 
         nb_paths_list = [tup[0] for tup in retriev_files(path=path, file_ext=[".ipynb"])]
 
         # convert jupyter notebook to python scripts
-        print("Converting notebooks to python scripts...")
-        _cnvt = convert_nb_to_py(path_list=nb_paths_list)
+        if file_check_results["num_ipynb"] > 0:
+            print("Converting notebooks to python scripts...")
+            _cnvt = convert_nb_to_py(path_list=nb_paths_list)
         
         #run_cmd_process(cmd_list=["git", "add", "*"])
         #run_cmd_process(cmd_list=["git", "commit", "-m", "converted jupyter notebooks to python scripts"])

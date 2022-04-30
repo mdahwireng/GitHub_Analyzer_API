@@ -34,7 +34,8 @@ def get_id_userid_df(data_dict)->pd.DataFrame:
         pd.DataFrame: The id and trainee_id dataframe.
     """
     df_dict = {"trainee":[d["id"] for d in data_dict],
-               "trainee_id": [d["attributes"]["trainee_id"] for d in data_dict]}
+               "trainee_id": [d["attributes"]["trainee_id"] for d in data_dict],
+               "email": [d["attributes"]["email"] for d in data_dict]}
     df = pd.DataFrame(df_dict)
     return df
 
@@ -467,7 +468,7 @@ def normalize_repo_data(data_dict, starter_code_ref_basevalues)->dict:
     """
     _dict = {
              k:(data_dict[k] - starter_code_ref_basevalues[k] 
-             if k in starter_code_ref_basevalues.keys() else data_dict[k]) 
+             if k in starter_code_ref_basevalues.keys() and data_dict[k] != None else data_dict[k]) 
              for k in data_dict
              }
     
