@@ -83,13 +83,13 @@ def update_data_strapi(data, pluralapi,entry_id, token=False)->None:
     
     
 
-def get_table_data_strapi(pluralapi,token=False)->list:
+def get_table_data_strapi(url,token=False)->list:
     """
     Get data from strapi table given pluralapi and strapi token
     Returns list of data retireved data.
 
     Args:
-        pluralapi: plural api of the table from which data is to be retrieved
+        url: url of strapi table
         token: strapi token to be used for authentication
 
     Returns:
@@ -102,20 +102,39 @@ def get_table_data_strapi(pluralapi,token=False)->list:
     else:
         headers = {"Content-Type": "application/json"}
     
-    insert_url =  "https://dev-cms.10academy.org/api/{}?pagination[start]=0&pagination[limit]=100".format(pluralapi)
+    data = []
+    start = 0
+    
+    if "?" in url:
+        insert_url = url + "&pagination[start]={}&pagination[limit]=100"
+    else:
+        insert_url = url + "?pagination[start]={}&pagination[limit]=100"
+
     
     try:
         r = requests.get(
-                        insert_url,
+                        insert_url.format(start),
                         headers = headers
                         ).json()
+
+        total = r["meta"]["pagination"]["total"]
+        data.extend(r["data"])
+
+        # loop to retrieve all availabe data
+        while len(data) < total:
+            start += 100
+            r = requests.get(
+                            insert_url.format(start),
+                            headers = headers
+                            ).json()
+            data.extend(r["data"])
             
         if "error" in r:
             print("Error: {}".format(r["error"]))
             return [r["error"]]
         else:
-            print("Data retrieved successfully from {}".format(pluralapi))
-            return r["data"]
+            print("Data retrieved successfully from {}".format(url))
+            return data
     except Exception as e:
         return [{"error": e}]
     
