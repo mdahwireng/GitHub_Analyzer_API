@@ -82,6 +82,8 @@ if github_token:
                 if len(starter_repo_data["repo_anlysis_metrics"]) > 1:
                     starter_code_data.update(starter_repo_data["repo_anlysis_metrics"])
 
+                starter_code_data = {k: v for k, v in starter_code_data.items() if k in combined_keys}
+
                 # set the base values
 
                 starter_code_ref_basevalues = {col: starter_code_data[col] for col in combined_keys if col in starter_code_data}
@@ -175,7 +177,6 @@ if github_token:
                 continue
 
             trainee = int(trainee_df[trainee_df["trainee_id"]==trainee_id].trainee.values[0])
-            print("Trainee: {}, {}\n".format(trainee, type(trainee)))
 
             # get user data from github api
             hld["user"] = get_user(user, github_token, api=False)
@@ -291,13 +292,18 @@ if github_token:
             # get the repo data dict
             if "error" not in hld["repo_meta"]:
                 print("Creating repo data dict...\n")
+
                 repo_dict = {col:(_dict[trainee_id]["repo_meta"][col]
-                    if col in _dict[trainee_id]["repo_meta"].keys() else repo_df_cols_default[col])  for col in repo_df_cols}
+                    if col in _dict[trainee_id]["repo_meta"].keys() else None)  for col in repo_df_cols}
 
                 if starter_code_ref_basevalues:
                     # normalize the repo data
                     print("Normalizing repo_meta data...\n")
                     repo_dict = normalize_repo_data(repo_dict, starter_code_ref_basevalues)
+
+                repo_dict = {col:(repo_dict[col]
+                    if col in _dict[trainee_id]["repo_meta"].keys() else repo_df_cols_default[col])  for col in repo_df_cols}
+
 
                 repo_dict["trainee_id"] = trainee_id
                 repo_dict["trainee"] = trainee
@@ -394,13 +400,17 @@ if github_token:
                 print("Creating repo analysis dict...\n")
                 
                 repo_analysis_dict = {col:(_dict[trainee_id]["repo_anlysis_metrics"][col]
-                                      if col in _dict[trainee_id]["repo_anlysis_metrics"].keys() else repo_analysis_df_cols_default[col])  
+                                      if col in _dict[trainee_id]["repo_anlysis_metrics"].keys() else None)  
                                       for col in repo_analysis_df_cols}
                 
                 # normalize the repo analysis data
                 if starter_code_ref_basevalues:
                     print("Normalizing repo analysis data...\n")
                     repo_analysis_dict = normalize_repo_data(repo_analysis_dict, starter_code_ref_basevalues)
+
+                repo_analysis_dict = {col:(repo_analysis_dict[col]
+                                      if col in _dict[trainee_id]["repo_anlysis_metrics"].keys() else repo_analysis_df_cols_default[col])  
+                                      for col in repo_analysis_df_cols}
 
                 repo_analysis_dict["trainee_id"] = trainee_id
                 repo_analysis_dict["trainee"] = trainee
@@ -555,7 +565,11 @@ if github_token:
 
                     for col in repo_metrics_cols:
                         for entry in r_data:
-                            df_dict[col].append(entry["attributes"][col])
+                            # ignore place holders for null values
+                            if (isinstance(entry["attributes"][col],float) and entry["attributes"][col] != -999.0) or (isinstance(entry["attributes"][col],int) and entry["attributes"][col] != -999):
+                                df_dict[col].append(entry["attributes"][col])
+                            else:
+                                df_dict[col].append(None)
 
                     cat_df = pd.DataFrame(df_dict)
 
@@ -567,6 +581,8 @@ if github_token:
                         cat_dict[col]["max"] = _max
                         cat_dict[col]["min"] = _min
                         cat_dict[col]["break_points"] = get_break_points(_min, _max)
+                       
+                        # compute sum for eligible columns
                         if col in sum_list:
                             cat_dict[col]["sum"] = cat_df[[col]].sum().to_list()[0]
 

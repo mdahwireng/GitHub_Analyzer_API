@@ -471,5 +471,4 @@ def normalize_repo_data(data_dict, starter_code_ref_basevalues)->dict:
              if k in starter_code_ref_basevalues.keys() and data_dict[k] != None else data_dict[k]) 
              for k in data_dict
              }
-    
     return _dict
