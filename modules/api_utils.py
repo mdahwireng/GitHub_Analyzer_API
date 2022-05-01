@@ -149,10 +149,13 @@ def retrieve_num_commits(user, repo, headers) -> int:
     """
 
     commit_url = "https://api.github.com/repos/{}/{}/stats/commit_activity".format(user,repo)
-    commits = send_get_req(_url=commit_url, _header=headers)[0].json()
+    try:
+        commits = send_get_req(_url=commit_url, _header=headers)[0].json()
     
-    # retrieve and return the total number of commits
-    return sum([c["total"] for c in commits])
+        # retrieve and return the total number of commits
+        return sum([c["total"] for c in commits])
+    except:
+        return None
     
 
 def retrieve_contributors(user, repo, headers) -> list:
@@ -170,10 +173,13 @@ def retrieve_contributors(user, repo, headers) -> list:
     """
 
     contributors_url = "https://api.github.com/repos/{}/{}/contributors".format(user,repo)
-    contributors = send_get_req(_url=contributors_url, _header=headers)[0].json()
+    try:
+        contributors = send_get_req(_url=contributors_url, _header=headers)[0].json()
     
-    # retrieve and return the list of contributors
-    return [c["login"] for c in contributors]
+        # retrieve and return the list of contributors
+        return [c["login"] for c in contributors]
+    except:
+        return None
 
     
 
@@ -193,11 +199,13 @@ def retrieve_clone_details(user, repo, headers) -> dict:
     """
 
     clone_url = "https://api.github.com/repos/{}/{}/traffic/clones".format(user,repo)
-    clones = send_get_req(_url=clone_url, _header=headers)[0].json()
+    try:
+        clones = send_get_req(_url=clone_url, _header=headers)[0].json()
     
-    # retrieve and return the dictionary of clone details
-    return {"count": clones["count"], "uniques": clones["uniques"]}
-
+        # retrieve and return the dictionary of clone details
+        return {"count": clones["count"], "uniques": clones["uniques"]}
+    except:
+        return None
 
 
 def retrieve_views_details(user, repo, headers) -> dict:
@@ -215,11 +223,13 @@ def retrieve_views_details(user, repo, headers) -> dict:
     """
 
     views_url =" https://api.github.com/repos/{}/{}/traffic/views".format(user,repo)
-    views = send_get_req(_url=views_url, _header=headers)[0].json()
+    try:
+        views = send_get_req(_url=views_url, _header=headers)[0].json()
     
-    # retrieve and return the dictionary of view details
-    return {"uniques": views["uniques"], "count": views["count"]}
-
+        # retrieve and return the dictionary of view details
+        return {"uniques": views["uniques"], "count": views["count"]}
+    except:
+        return None
 
 
 

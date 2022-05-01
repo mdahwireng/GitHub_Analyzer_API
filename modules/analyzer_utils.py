@@ -3,6 +3,7 @@ import pandas as pd
 import requests
 import time
 import os
+import sys
 
 from app import get_user, single_repos_meta_single_repos_pyanalysis
 
@@ -239,6 +240,9 @@ def get_metric_category(val, break_points, reverse=False)->str:
     Returns:
         str: The metric category.
     """
+    if int(val) == -999 or float(val) == -999.0:
+        print("Val :", val, "\n")
+        return "N/A"
     if sum(break_points) == 0:
         return "top 25%"
     if reverse:

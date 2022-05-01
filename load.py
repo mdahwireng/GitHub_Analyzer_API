@@ -5,6 +5,7 @@ import os
 import sys
 import pandas as pd
 import requests
+import numpy as np
 from app import get_user, single_repos_meta_single_repos_pyanalysis
 
 
@@ -571,7 +572,7 @@ if github_token:
                     for col in repo_metrics_cols:
                         for entry in r_data:
                             # ignore place holders for null values
-                            if (isinstance(entry["attributes"][col],float) and entry["attributes"][col] != -999.0) or (isinstance(entry["attributes"][col],int) and entry["attributes"][col] != -999):
+                            if (isinstance(entry["attributes"][col],float) and entry["attributes"][col] != -999.0) or (isinstance(entry["attributes"][col],int) and entry["attributes"][col] != -999) or (isinstance(entry["attributes"][col],str)):
                                 df_dict[col].append(entry["attributes"][col])
                             else:
                                 df_dict[col].append(None)
@@ -594,6 +595,9 @@ if github_token:
                     # create rannk dict
                     rank_dict = {col:[] for col in repo_metrics_cols}
 
+                    cat_df.fillna(-999, inplace=True)
+                    
+
                     for i,row in cat_df.iterrows():
                         for col in repo_metrics_cols:
                             if col == "trainee_id":
@@ -607,7 +611,7 @@ if github_token:
                                     else:
                                         rank_dict[col].append(get_metric_category(val=val, break_points=break_points, reverse=True))
                                 else:
-                                    rank_dict[col].append(None)
+                                    rank_dict[col].append(get_metric_category(val=-999, break_points=break_points, reverse=False))
 
                     # create rank df
                     rank_df = pd.DataFrame(rank_dict)
