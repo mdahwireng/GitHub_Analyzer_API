@@ -326,10 +326,29 @@ def retriev_files(path, file_ext) -> list:
         A list of tuples of the relative path of language files , relative path of language files 
         with filenames prefixed with changed
     """
-    return [(os.path.join(root, fn), os.path.join(root, "changed_"+fn)) 
+    r_list = [(os.path.join(root, fn), os.path.join(root, "changed_"+fn)) 
             for root, _, files in os.walk(path, topdown=False) 
-            if not root.startswith("__") and not root.startswith("..")
+            if not root.startswith("__") and not root.startswith("..") 
             for fn in files for ext in file_ext if fn.endswith(ext)]
+
+    filter_list = ["lib","bin","etc", "include", "share", "var", "lib64"]
+    take_out = []
+    for root in filter_list:
+        for tup in r_list:
+            if root in tup[0].lower().split("/"):
+                take_out.append(tup)
+                try:
+                    os.remove(tup[0])
+                except:
+                    pass
+                #r_list.remove(tup)
+                continue
+
+    r_list = [tup for tup in r_list if tup not in take_out]
+
+    return r_list
+
+
 
 
 def retrieve_init_last_commit_sha(stdout) -> tuple:
@@ -620,23 +639,29 @@ def run_pyanalysis(path="./") -> dict:
     analysis_results = {}
     for k,v in analysis_dict.items():
         if k == "halstead_complexity":
+            print(k,"\n")
             stdout, stderr, return_code = run_cmd_process(cmd_list=["radon", v, path , "-j"])
 
             if return_code == 0:
                 analysis_results[k] = get_hal_summary(json.loads(stdout.strip()))
+                print("Success\n")
                 
             else:
                 analysis_results[k] = json.loads(stderr.strip())
+                print("Error\n")
         
         else:
             # run radon code analysis
+            print(k, "\n")
             stdout, stderr, return_code = run_cmd_process(cmd_list=["radon", v, path, "-s", "-j"])
             
             # if there is no error
             if return_code == 0:
                 analysis_results[k] = json.loads(stdout.strip())
+                print("Success\n")
             else:
                 analysis_results[k] = json.loads(stderr.strip())
+                print("Error\n")
     return analysis_results
 
 def convert_nb_to_py(path_list):

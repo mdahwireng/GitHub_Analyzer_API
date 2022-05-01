@@ -46,6 +46,8 @@ if github_token:
         #dt_repo = pd.read_csv("data/github_repos_wk1.csv")
         #github_df = dt_user.merge(dt_repo, on="trainee_id")
         
+        #github_df = pd.read_csv("data/b5_week0_github_df.csv")
+
         github_df = pd.read_csv("data/try.csv")
 
         starter_code_url = "https://github.com/10xac/Twitter-Data-Analysis"
@@ -160,8 +162,8 @@ if github_token:
             hld = dict()
             if counter != 0 and counter%5 == 0:
                 print(user)
-                print("Sleeping for 60 seconds\n")
-                time.sleep(60)
+                print("Sleeping for 30 seconds\n")
+                time.sleep(30)
                 print("Resumed...\n")
 
             # get repo meta data and analysis data
@@ -195,7 +197,8 @@ if github_token:
                 # get the user data dict
                 print("Creating user data dict...\n")
                 user_dict = {col:(_dict[trainee_id]["user"][col]
-                    if col in _dict[trainee_id]["user"].keys() else user_df_cols_default[col])  for col in user_df_cols}
+                    if col in _dict[trainee_id]["user"].keys() and _dict[trainee_id]["user"][col] !=None
+                     else user_df_cols_default[col])  for col in user_df_cols}
 
                 user_dict["trainee_id"] = trainee_id
                 user_dict["trainee"] = trainee
@@ -302,7 +305,8 @@ if github_token:
                     repo_dict = normalize_repo_data(repo_dict, starter_code_ref_basevalues)
 
                 repo_dict = {col:(repo_dict[col]
-                    if col in _dict[trainee_id]["repo_meta"].keys() else repo_df_cols_default[col])  for col in repo_df_cols}
+                    if col in _dict[trainee_id]["repo_meta"].keys() and repo_dict[col] != None
+                    else repo_df_cols_default[col])  for col in repo_df_cols}
 
 
                 repo_dict["trainee_id"] = trainee_id
@@ -409,7 +413,8 @@ if github_token:
                     repo_analysis_dict = normalize_repo_data(repo_analysis_dict, starter_code_ref_basevalues)
 
                 repo_analysis_dict = {col:(repo_analysis_dict[col]
-                                      if col in _dict[trainee_id]["repo_anlysis_metrics"].keys() else repo_analysis_df_cols_default[col])  
+                                      if col in _dict[trainee_id]["repo_anlysis_metrics"].keys() and repo_analysis_dict[col] != None
+                                      else repo_analysis_df_cols_default[col])  
                                       for col in repo_analysis_df_cols}
 
                 repo_analysis_dict["trainee_id"] = trainee_id
