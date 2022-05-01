@@ -149,10 +149,13 @@ def retrieve_num_commits(user, repo, headers) -> int:
     """
 
     commit_url = "https://api.github.com/repos/{}/{}/stats/commit_activity".format(user,repo)
-    commits = send_get_req(_url=commit_url, _header=headers)[0].json()
+    try:
+        commits = send_get_req(_url=commit_url, _header=headers)[0].json()
     
-    # retrieve and return the total number of commits
-    return sum([c["total"] for c in commits])
+        # retrieve and return the total number of commits
+        return sum([c["total"] for c in commits])
+    except:
+        return None
     
 
 def retrieve_contributors(user, repo, headers) -> list:
@@ -170,10 +173,13 @@ def retrieve_contributors(user, repo, headers) -> list:
     """
 
     contributors_url = "https://api.github.com/repos/{}/{}/contributors".format(user,repo)
-    contributors = send_get_req(_url=contributors_url, _header=headers)[0].json()
+    try:
+        contributors = send_get_req(_url=contributors_url, _header=headers)[0].json()
     
-    # retrieve and return the list of contributors
-    return [c["login"] for c in contributors]
+        # retrieve and return the list of contributors
+        return [c["login"] for c in contributors]
+    except:
+        return None
 
     
 
@@ -193,11 +199,13 @@ def retrieve_clone_details(user, repo, headers) -> dict:
     """
 
     clone_url = "https://api.github.com/repos/{}/{}/traffic/clones".format(user,repo)
-    clones = send_get_req(_url=clone_url, _header=headers)[0].json()
+    try:
+        clones = send_get_req(_url=clone_url, _header=headers)[0].json()
     
-    # retrieve and return the dictionary of clone details
-    return {"count": clones["count"], "uniques": clones["uniques"]}
-
+        # retrieve and return the dictionary of clone details
+        return {"count": clones["count"], "uniques": clones["uniques"]}
+    except:
+        return None
 
 
 def retrieve_views_details(user, repo, headers) -> dict:
@@ -215,11 +223,13 @@ def retrieve_views_details(user, repo, headers) -> dict:
     """
 
     views_url =" https://api.github.com/repos/{}/{}/traffic/views".format(user,repo)
-    views = send_get_req(_url=views_url, _header=headers)[0].json()
+    try:
+        views = send_get_req(_url=views_url, _header=headers)[0].json()
     
-    # retrieve and return the dictionary of view details
-    return {"uniques": views["uniques"], "count": views["count"]}
-
+        # retrieve and return the dictionary of view details
+        return {"uniques": views["uniques"], "count": views["count"]}
+    except:
+        return None
 
 
 
@@ -250,7 +260,7 @@ def retrieve_repo_meta(resp_json, headers, user) -> dict:
         # Retrieve contributors details
         dt[repo]["contributors"] = retrieve_contributors(user, repo, headers)
 
-        # Retrieve clones details
+        """# Retrieve clones details
         try:
             dt[repo]["clones"] = retrieve_clone_details(user, repo, headers)
         except:
@@ -259,7 +269,7 @@ def retrieve_repo_meta(resp_json, headers, user) -> dict:
             # Retrieve views(visitors) details
             dt[repo]["visitors"] = retrieve_views_details(user, repo, headers)
         except:
-             dt[repo]["visitors"] = "Cannot get Acess"
+             dt[repo]["visitors"] = "Cannot get Acess" """
         
 
     return dt
@@ -326,9 +336,29 @@ def retriev_files(path, file_ext) -> list:
         A list of tuples of the relative path of language files , relative path of language files 
         with filenames prefixed with changed
     """
-    return [(os.path.join(root, fn), os.path.join(root, "changed_"+fn)) 
+    r_list = [(os.path.join(root, fn), os.path.join(root, "changed_"+fn)) 
             for root, _, files in os.walk(path, topdown=False) 
+            if not root.startswith("__") and not root.startswith("..") 
             for fn in files for ext in file_ext if fn.endswith(ext)]
+
+    filter_list = ["lib","bin","etc", "include", "share", "var", "lib64"]
+    take_out = []
+    for root in filter_list:
+        for tup in r_list:
+            if root in tup[0].lower().split("/"):
+                take_out.append(tup)
+                try:
+                    os.remove(tup[0])
+                except:
+                    pass
+                #r_list.remove(tup)
+                continue
+
+    r_list = [tup for tup in r_list if tup not in take_out]
+
+    return r_list
+
+
 
 
 def retrieve_init_last_commit_sha(stdout) -> tuple:
@@ -352,8 +382,12 @@ def retrieve_init_last_commit_sha(stdout) -> tuple:
         # return the first and the most current
         return (sha_lines[-1], sha_lines[0])
     else:
-        # return the only sha in both index 0 and 1
-        return (sha_lines[0], sha_lines[0])
+        try:
+            # return the only sha in index 0
+            return (sha_lines[0], sha_lines[0])
+        except:
+            # return empty None
+            return (None, None)
 
     
 
@@ -383,7 +417,10 @@ def retrieve_diff_details(stdout) -> tuple:
         if "," in additions:
             additions = additions.replace(",","")
 
-        return int(additions), [i[1:] for i in lines[4:] if i.startswith("+")]
+        try:
+            return int(additions), [i[1:] for i in lines[4:] if i.startswith("+")]
+        except:
+            return 0, [""]
     else:
         return 0, [""]
 
@@ -468,16 +505,23 @@ def get_additions_and_save_contents(files, commit_sha):
 
     additions_dict = dict()
     for tup in zip(files, commit_sha):
-        # run git diff from the retrieved shas
-        stdout, stderr, _ = run_cmd_process(cmd_list=["git", "diff", tup[1][0], tup[1][1], "--", tup[0][0]])
+        if tup[1][0] is not None:
+            # run git diff command
+            stdout, stderr, _ = run_cmd_process(cmd_list=["git", "diff", tup[1][0], tup[1][1], "--", tup[0][0]])
+            
+            # retrieve the additions and the content of the changed files
+            additions, content = retrieve_diff_details(stdout)
+            
+            # save the content of the changed files
+            save_file(file_name=tup[0][1], content=content)
 
-        # retrieve diff details
-        additions, content = retrieve_diff_details(stdout)
-        additions_dict[tup[0][0]] = additions
+            # add the additions to the dictionary
+            additions_dict[tup[0][0]] = additions
+        
+        else:
+            # if the initial commit sha is None, then the file has not been changed
+            additions_dict[tup[0][0]] = 0
 
-        # save changes made to file temporaily for analysis
-        save_file(file_name=tup[0][1], content=content)
-    
     return additions_dict
 
 def get_hal_summary(hal_result_dict)->dict:
@@ -508,6 +552,87 @@ def get_hal_summary(hal_result_dict)->dict:
     return hal_summary_dict
 
 
+def get_file_checks(exclude_list, file_extensions, files_to_check, dirs_to_check, path="./"):
+    """
+    Get the file checks for a given path.
+    
+
+    Args:
+        path (str): The path to check.
+        exclude_list (list): A list of directories to exclude.
+        file_extensions (list): A list of file extensions to check.
+        files_to_check (list): A list of files to check.
+        dirs_to_check (list): A list of directories to check.
+
+    Returns:
+        dict: A dictionary of the file checks and number of files
+    """
+    exclude = exclude_list
+    exclude_roots = ["./"+i.lower() for i in exclude]
+    count_dict = {"num_dirs":0, "num_files":0}
+    extension_checks = {"num_"+ ext.lower():0 for ext in file_extensions}
+    file_checks = {f.lower():False for f in files_to_check}
+    dir_checks = {dir.lower():False for dir in dirs_to_check}
+
+
+    for i in os.walk(path):
+        if True in [False if i[0].lower().startswith(e.lower() + "/") 
+                    or i[0].lower() == e.lower() 
+                    or i[0].__contains__("/" + e.lower() + "/")
+                    else True for e in exclude_roots ] or len(exclude_roots) == 0:
+            
+            dirs = i[1]
+            _files = i[2]
+
+            # check for the existence of interested files and file extentions
+            for f in _files:
+                if f.lower() in file_checks:
+                    file_checks[f.lower()] = True
+
+            for ig in exclude:
+                # remove files from the directories to exclude
+                for f in _files:
+                     if f.lower().startswith(ig.lower() + "/") or f.lower() == ig.lower() or f.__contains__("/" + ig.lower() + "/"):
+                         _files.remove(f)
+                # remove the directories to exclude
+                try:
+                    dirs.remove(ig)
+                except:
+                    pass
+            
+            # count directories
+            count_dict["num_dirs"] += len(dirs)
+
+            # count files
+            count_dict["num_files"] += len(_files)
+            
+            # check for the existence of interesting dirs
+            for dir in dirs:
+                if dir.lower() in dir_checks:
+                    dir_checks[dir.lower()] = True
+            
+            
+            for f in _files:
+                # check for the existence of interested file extentions
+                for ext in file_extensions:
+                    if f.endswith(ext):
+                        extension_checks["num_"+ext] += 1
+
+        else:
+            print ("{} is excluded\n".format(i[0]))
+
+
+    checks_results_dict = dict()
+    checks_results_dict["interested_files"] = file_checks
+    checks_results_dict["interested_files"].update(dir_checks)
+    checks_results_dict["interested_files"] = [{"name":k, "present":v} for k,v in checks_results_dict["interested_files"].items()]
+    checks_results_dict.update(count_dict)
+    checks_results_dict.update(extension_checks)
+
+    return checks_results_dict
+
+
+
 def run_pyanalysis(path="./") -> dict:
     """
     Runs a subprocess to under take python code analysis recursively given the path to a directory on which 
@@ -524,24 +649,56 @@ def run_pyanalysis(path="./") -> dict:
     analysis_results = {}
     for k,v in analysis_dict.items():
         if k == "halstead_complexity":
+            print(k,"\n")
             stdout, stderr, return_code = run_cmd_process(cmd_list=["radon", v, path , "-j"])
 
             if return_code == 0:
                 analysis_results[k] = get_hal_summary(json.loads(stdout.strip()))
+                print("Success\n")
                 
             else:
                 analysis_results[k] = json.loads(stderr.strip())
+                print("Error\n")
         
         else:
             # run radon code analysis
+            print(k, "\n")
             stdout, stderr, return_code = run_cmd_process(cmd_list=["radon", v, path, "-s", "-j"])
             
             # if there is no error
             if return_code == 0:
                 analysis_results[k] = json.loads(stdout.strip())
+                print("Success\n")
             else:
                 analysis_results[k] = json.loads(stderr.strip())
+                print("Error\n")
     return analysis_results
+
+def convert_nb_to_py(path_list):
+    """
+    Converts a notebook to a python file.
+
+    Args:
+        path_list(list): A list of paths to the notebooks to be converted.
+
+    Returns:
+        A list of paths to the converted python files.
+    """
+    conversion_success = []
+    for path in path_list:
+        stdout, stderr, return_code = run_cmd_process(cmd_list=["jupyter", "nbconvert", path, "--to", "python"])
+        if return_code == 0:
+            conversion_success.append(True)
+        else:
+            conversion_success.append(False)
+
+    out_dict = {"success":[], "fail":[]}
+    for i in range(len(conversion_success)):
+        if conversion_success[i]:
+            out_dict["success"].append(path_list[i])
+        else:
+            out_dict["fail"].append(path_list[i])
+    return out_dict
 
 
 def run_to_get_adds_and_save_content(repo_name, repo_dict, file_ext, path="./") -> tuple:
@@ -572,6 +729,25 @@ def run_to_get_adds_and_save_content(repo_name, repo_dict, file_ext, path="./") 
         # change working directory to cloned reository
         os.chdir(repo_path)
 
+        # check for the existence of files with the given file extension
+        exclude_list=[".git", ".ipynb_checkpoints", "__pycache__", "node_modules"]
+        file_extensions=["py","js","ipynb"]
+        files_to_check=[".gitignore", "README.md", "requirements.txt", "dockerfile", ".dvcignore"]
+        dirs_to_check=[".github", ".dvc"]
+
+        file_check_results =  get_file_checks(path=path, exclude_list=exclude_list, file_extensions=file_extensions, files_to_check=files_to_check , dirs_to_check=dirs_to_check)
+        
+        # retrieve jupyter notebook paths
+        nb_paths_list = [tup[0] for tup in retriev_files(path=path, file_ext=[".ipynb"])]
+
+        # convert jupyter notebook to python scripts
+        if file_check_results["num_ipynb"] > 0:
+            print("Converting notebooks to python scripts...")
+            _cnvt = convert_nb_to_py(path_list=nb_paths_list)
+        
+        #run_cmd_process(cmd_list=["git", "add", "*"])
+        #run_cmd_process(cmd_list=["git", "commit", "-m", "converted jupyter notebooks to python scripts"])
+
         # rerieve language files
         files = retriev_files(file_ext=file_ext, path=path)
 
@@ -580,10 +756,10 @@ def run_to_get_adds_and_save_content(repo_name, repo_dict, file_ext, path="./") 
 
         additions_dict = get_additions_and_save_contents(files, commit_sha)
 
-        return stderr, return_code, additions_dict, files
+        return stderr, return_code, additions_dict, files, file_check_results
 
     else:
-        return stderr, return_code, dict(), list()
+        return stderr, return_code, dict(), list(), dict()
 
 
 
@@ -644,6 +820,11 @@ def get_type_details(_type, v_list)->dict:
 
 
 def get_file_level_summary(analysis_results, additions_dict):
+
+    raw_metrics = {"blank": None, "comments": None, "lloc": None, "loc": None, 
+                   "multi": None, "single_comments": None, "sloc": None}
+
+    halstead = {"difficulty": None,"effort": None, "time": None}
     
     file_level = {f:dict() for f in analysis_results["raw_metrics"]}
     for f in file_level.keys():
@@ -663,14 +844,14 @@ def get_file_level_summary(analysis_results, additions_dict):
             file_level[f]["avg_lines_per_method"] = hld["avg_lines_per_method"]
         else:
             # functions
-            file_level[f]["num_functions"] = 0
-            file_level[f]["avg_lines_per_function"] = 0
+            file_level[f]["num_functions"] = None
+            file_level[f]["avg_lines_per_function"] = None
             # classes
-            file_level[f]["num_classes"] = 0
-            file_level[f]["avg_lines_per_class"] = 0
+            file_level[f]["num_classes"] = None
+            file_level[f]["avg_lines_per_class"] = None
             # methods
-            file_level[f]["num_methods"] = 0
-            file_level[f]["avg_lines_per_method"] = 0
+            file_level[f]["num_methods"] = None
+            file_level[f]["avg_lines_per_method"] = None
 
         # cyclomatic complexity 
         if f in analysis_results["cyclomatic_complexity_summary"].keys() and analysis_results["cyclomatic_complexity_summary"][f] != None:
@@ -678,7 +859,7 @@ def get_file_level_summary(analysis_results, additions_dict):
             file_level[f]["cc_rank"] = analysis_results["cyclomatic_complexity_summary"][f]["rank"]
         else:
             file_level[f]["cc"] = None
-            file_level[f]["cc_rank"] = "N/A"
+            file_level[f]["cc_rank"] = None
 
         # maintainability index
         if f in analysis_results["maintainability_index"].keys() and "error" not in analysis_results["maintainability_index"][f].keys():
@@ -686,7 +867,7 @@ def get_file_level_summary(analysis_results, additions_dict):
             file_level[f]["mi_rank"] = analysis_results["maintainability_index"][f]["rank"]
         else:
             file_level[f]["mi"] = None
-            file_level[f]["mi_rank"] = "N/A"
+            file_level[f]["mi_rank"] = None
 
         # additions
         if "./"+f in additions_dict.keys():
@@ -697,6 +878,24 @@ def get_file_level_summary(analysis_results, additions_dict):
         # raw metrics
         file_level[f].update(analysis_results["raw_metrics"][f]) 
         file_level[f].update(analysis_results["halstead_complexity"][f])
+    
+    
+    for f in additions_dict:
+        if f not in file_level.keys():
+            file_level[f] = dict()
+            file_level[f]["additions"] = additions_dict[f]
+            file_level[f]["cc"] = None
+            file_level[f]["cc_rank"] = None
+            file_level[f]["mi"] = None
+            file_level[f]["mi_rank"] = None
+            file_level[f]["num_functions"] = None
+            file_level[f]["avg_lines_per_function"] = None
+            file_level[f]["num_classes"] = None
+            file_level[f]["avg_lines_per_class"] = None
+            file_level[f]["num_methods"] = None
+            file_level[f]["avg_lines_per_method"] = None
+            file_level[f].update(raw_metrics) 
+            file_level[f].update(halstead)
     
     return file_level
 
@@ -721,20 +920,26 @@ def get_js_cc_summary(analysis_results, cc_key):
 
 def get_repo_level_summary(files, file_level):
     commulative_keys = ["blank","comments","lloc","loc","multi","single_comments","sloc","additions","num_functions","num_classes","num_methods","difficulty", "effort", "time"]
-                    
-    repo_summary = {k:[] for k in file_level[files[0][0][2:]].keys() if not k.endswith("_rank")}
-    
+                
+    repo_summary = {k:[] for k in file_level[list(file_level.keys())[0]].keys() if not k.endswith("_rank")}
     for k in repo_summary.keys():
         for f in file_level:
             if not f.__contains__("changed_") and k in file_level[f].keys():
-                if file_level[f][k] != None:
+                if not isinstance(file_level[f][k], str) and file_level[f][k] != None:
                     repo_summary[k].append(file_level[f][k])
 
     repo_summary = {k:(sum(v) if k in commulative_keys else sum(v)/len(v)) if len(v) > 0 else 0 for k,v in repo_summary.items()}
     
-    repo_summary["cc_rank"] = cc_rank(repo_summary["cc"])
-    repo_summary["mi_rank"] = mi_rank(repo_summary["mi"])
-
+    try:
+        repo_summary["cc_rank"] = cc_rank(repo_summary["cc"])
+    except:
+        repo_summary["cc_rank"] = None
+    
+    try:
+        repo_summary["mi_rank"] = mi_rank(repo_summary["mi"])
+    except:
+        repo_summary["mi_rank"] = None
+    
     return repo_summary
 
 
