@@ -275,7 +275,6 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, api=True)-
                 resp_dict = {d["name"]:{k:d[k] for k in info_list} for i in range(len(d)) if d["name"] == repo_name}
                 if len(resp_dict) > 0:
                     resp_dict[repo_name]["repo_name"] = repo_name
-                    print("resp_dict>>>>>>>>>", resp_dict, "\n")
 
                 
                 if len(repo_details) == 0:
