@@ -1,2 +1,5 @@
 api_env/
 **__pycache__/
+*.csv
+*.json
+*.log
