@@ -270,8 +270,6 @@ def retrieve_repo_meta(resp_json, headers, user) -> dict:
             dt[repo]["visitors"] = retrieve_views_details(user, repo, headers)
         except:
              dt[repo]["visitors"] = "Cannot get Acess" """
-        
-
     return dt
 
 
@@ -341,18 +339,22 @@ def retriev_files(path, file_ext) -> list:
             if not root.startswith("__") and not root.startswith("..") 
             for fn in files for ext in file_ext if fn.endswith(ext)]
 
-    filter_list = ["lib","bin","etc", "include", "share", "var", "lib64"]
+    filter_list = ["lib","bin","etc", "include", "share", "var", "lib64", "venv"]
     take_out = []
     for root in filter_list:
         for tup in r_list:
-            if root in tup[0].lower().split("/"):
+            path_split_l = tup[0].lower().split("/")
+
+            if root in path_split_l:
+
+                path_split = tup[0].split("/")
+                dir_path = "/".join(path_split[ : path_split_l.index(root)+1])
                 take_out.append(tup)
                 try:
-                    os.remove(tup[0])
+                    shutil.rmtree(dir_path)
                 except:
                     pass
                 #r_list.remove(tup)
-                continue
 
     r_list = [tup for tup in r_list if tup not in take_out]
 

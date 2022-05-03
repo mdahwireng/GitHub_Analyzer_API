@@ -251,9 +251,12 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, api=True)-
         # retrive response body
         d = resp.json()
         
-        info_list = ["forks", "languages_url", "contributors_url", "branches_url", "description", "html_url"]
+        info_list = ["name","forks", "languages_url", "contributors_url", "branches_url", "description", "html_url"]
         resp_dict = {repo["name"]:{k:repo[k] for k in info_list} for repo in d["items"]}
-        
+
+        if len(resp_dict) > 0:
+            resp_dict[repo_name]["repo_name"] = repo_name
+
         repo_details = [repo for repo in d["items"]]
         if len(repo_details) == 0:
             print("Using alternate method to retrieve rpository details...\n")
@@ -270,6 +273,10 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, api=True)-
                     repo_details = []
 
                 resp_dict = {d["name"]:{k:d[k] for k in info_list} for i in range(len(d)) if d["name"] == repo_name}
+                if len(resp_dict) > 0:
+                    resp_dict[repo_name]["repo_name"] = repo_name
+                    print("resp_dict>>>>>>>>>", resp_dict, "\n")
+
                 
                 if len(repo_details) == 0:
                     if api:

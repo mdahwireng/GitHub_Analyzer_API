@@ -47,11 +47,11 @@ if github_token:
         #dt_repo = pd.read_csv("data/github_repos_wk1.csv")
         #github_df = dt_user.merge(dt_repo, on="trainee_id")
         
-        #github_df = pd.read_csv("data/b5_week0_github_df.csv")
+        #github_df = pd.read_csv("data/b4_wk12.csv")
 
         github_df = pd.read_csv("data/try.csv")
 
-        starter_code_url = "https://github.com/10xac/Twitter-Data-Analysis"
+        starter_code_url = None #"https://github.com/10xac/Twitter-Data-Analysis"
 
 
 
@@ -155,8 +155,8 @@ if github_token:
         repo_metric_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "error":[]}
         entry_made_into_analysis_table = False
 
-        week="week0"
-        batch = 5
+        week="week12"
+        batch = 4
 
         for _, trainee_id, user, repo_name in github_df.itertuples():
             print("Retrieving data for user: {} and repo: {}...".format(user, repo_name))

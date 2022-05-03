@@ -241,7 +241,6 @@ def get_metric_category(val, break_points, reverse=False)->str:
         str: The metric category.
     """
     if int(val) == -999 or float(val) == -999.0:
-        print("Val :", val, "\n")
         return "N/A"
     if sum(break_points) == 0:
         return "top 25%"
