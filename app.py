@@ -253,6 +253,7 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, api=True)-
         
         info_list = ["name","forks", "languages_url", "contributors_url", "branches_url", "description", "html_url"]
         resp_dict = {repo["name"]:{k:repo[k] for k in info_list} for repo in d["items"]}
+        repo_name = list(resp_dict.keys())[0]
 
         if len(resp_dict) > 0:
             resp_dict[repo_name]["repo_name"] = repo_name
