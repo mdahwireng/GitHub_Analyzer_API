@@ -253,9 +253,10 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, api=True)-
         
         info_list = ["name","forks", "languages_url", "contributors_url", "branches_url", "description", "html_url"]
         resp_dict = {repo["name"]:{k:repo[k] for k in info_list} for repo in d["items"]}
-        repo_name = list(resp_dict.keys())[0]
+        
 
         if len(resp_dict) > 0:
+            repo_name = list(resp_dict.keys())[0]
             resp_dict[repo_name]["repo_name"] = repo_name
 
         repo_details = [repo for repo in d["items"]]
@@ -268,13 +269,14 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, api=True)-
                 # retrieve named repo
                 #print(d)
                 # repo_details = [repo for repo in d if repo["name"]==repo_name]
-                if  d["name"]==repo_name:
+                if  d["name"].lower()==repo_name.lower():
                     repo_details = [d]
                 else:
                     repo_details = []
 
-                resp_dict = {d["name"]:{k:d[k] for k in info_list} for i in range(len(d)) if d["name"] == repo_name}
+                resp_dict = {d["name"]:{k:d[k] for k in info_list} for i in range(len(d)) if d["name"].lower() == repo_name.lower()}
                 if len(resp_dict) > 0:
+                    repo_name = list(resp_dict.keys())[0]
                     resp_dict[repo_name]["repo_name"] = repo_name
 
                 
