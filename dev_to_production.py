@@ -3,11 +3,15 @@ from modules.strapi_methods import get_table_data_strapi, insert_data_strapi, up
 
 
 def retrieve_table_data(url, index_cols):
+    """Retrieves table data and returns a dictionary with table index as key and table values in cluding index as values"""
     table_data_dict = get_table_data_strapi(url)
 
+    # create an a dictionary with table index as key and table values in cluding index as values
     try:
         if len(table_data_dict) > 0 and "error" not in table_data_dict[0]:
             time_keys = ["createdAt","updatedAt","publishedAt"]
+           
+            # dictionary without the time columns
             data_dict = {tuple([d["attributes"][i] for i in index_cols]):({"attributes":{k:v for k,v in d["attributes"].items() if k not in time_keys}, "id":d["id"]}) for d in table_data_dict}
         else:
             if len(table_data_dict) == 0:
@@ -21,8 +25,10 @@ def retrieve_table_data(url, index_cols):
 
 
 def query_table(url, pluralapi, index_cols, data):
+    """Queries strapi tables and returns data"""
     q_url = url
 
+    # create the query url string
     for i in range(len(index_cols)):
         if i == 0:
             q_url = q_url + "/{}?filters[{}][$eq]={}".format(pluralapi, index_cols[i], data[index_cols[i]])
@@ -34,6 +40,9 @@ def query_table(url, pluralapi, index_cols, data):
 
 
 def run_checks(dev_key, dev_values, prod_data):
+    """Runs check to determine whether an in dev table exist in production table and returns 
+    a string of the appropriate action to take"""
+    
     print("\nChecking if entry exist in production table...\n\n")
     
     if dev_key in prod_data:
@@ -55,6 +64,8 @@ def run_checks(dev_key, dev_values, prod_data):
 
 
 def dev_to_prod(dev_url, prod_url, plural_api, index_cols):
+    """Runs the migration of changes from dev tables to production tables"""
+    
     print("\nWorking on {} table...\n".format(plural_api))
 
     dev_data = retrieve_table_data(url=dev_url+"/"+plural_api, index_cols=index_cols)
@@ -85,7 +96,7 @@ def dev_to_prod(dev_url, prod_url, plural_api, index_cols):
 
 
 if __name__ == "__main__":
-
+    
     dev_url = "https://dev-cms.10academy.org/api"
     prod_url = "https://cms.10academy.org/api"
 
