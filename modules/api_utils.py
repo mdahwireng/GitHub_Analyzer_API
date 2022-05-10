@@ -148,12 +148,12 @@ def retrieve_num_commits(user, repo, headers) -> int:
         integer of the number of commits
     """
 
-    commit_url = "https://api.github.com/repos/{}/{}/stats/commit_activity".format(user,repo)
+    commit_url = "https://api.github.com/repos/{}/{}/commits".format(user,repo)
     try:
         commits = send_get_req(_url=commit_url, _header=headers)[0].json()
     
         # retrieve and return the total number of commits
-        return sum([c["total"] for c in commits])
+        return len(commits)
     except:
         return None
     
