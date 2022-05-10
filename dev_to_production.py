@@ -53,7 +53,7 @@ def run_checks(dev_key, dev_values, prod_data):
         if dev_values == prod_data[dev_key]["attributes"]:
            
             print("Entry is the same in both production and development tables")
-            return "same"
+            return "pass"
         else:
             print("Entry is not the same in production table\n")
             return "update"
@@ -78,7 +78,7 @@ def dev_to_prod(dev_url, prod_url, plural_api, index_cols):
 
         check = run_checks(dev_key, dev_values, prod_data)
 
-        if check == "same":
+        if check == "pass":
             pass
 
         elif check == "update":
@@ -96,7 +96,7 @@ def dev_to_prod(dev_url, prod_url, plural_api, index_cols):
 
 
 if __name__ == "__main__":
-    
+
     dev_url = "https://dev-cms.10academy.org/api"
     prod_url = "https://cms.10academy.org/api"
 
