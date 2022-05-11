@@ -148,7 +148,7 @@ def retrieve_num_commits(user, repo, headers) -> int:
         integer of the number of commits
     """
 
-    commit_url = "https://api.github.com/repos/{}/{}/commits".format(user,repo)
+    commit_url = "https://api.github.com/repos/{}/{}/commits?per_page=10000".format(user,repo)
     try:
         commits = send_get_req(_url=commit_url, _header=headers)[0].json()
     
