@@ -148,12 +148,13 @@ def retrieve_num_commits(user, repo, headers) -> int:
         integer of the number of commits
     """
 
-    commit_url = "https://api.github.com/repos/{}/{}/commits?per_page=10000".format(user,repo)
+    commit_url = "https://api.github.com/repos/{}/{}/commits?per_page=1&page=1".format(user,repo)
     try:
-        commits = send_get_req(_url=commit_url, _header=headers)[0].json()
+        resp = send_get_req(_url=commit_url, _header=headers)[0]
+        commits = resp.headers["link"].split(',')[1].split("=")[2][:-6]
     
         # retrieve and return the total number of commits
-        return len(commits)
+        return int(commits)
     except:
         return None
     
