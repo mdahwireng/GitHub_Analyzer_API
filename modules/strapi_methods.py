@@ -1,6 +1,8 @@
 import requests
 import json
 
+from modules.api_utils import send_get_req
+
 def insert_data_strapi(data, pluralapi, url="https://dev-cms.10academy.org/api", token=False)->None:
     """ 
     Insert data into strapi table given data, pluralapi and strapi token
@@ -122,7 +124,7 @@ def get_table_data_strapi(url,token=False)->list:
                         insert_url.format(start),
                         headers = headers
                         ).json()
-
+                        
         total = r["meta"]["pagination"]["total"]
         data.extend(r["data"])
 
@@ -143,7 +145,33 @@ def get_table_data_strapi(url,token=False)->list:
             return data
     except Exception as e:
         return [{"error": e}]
-    
+
+
+def get_trainee_data(batch, base_url):
+    """
+    Gets trainee data from trainee table
+    """
+    query = """query getTraineeId{{
+    trainees(pagination:{{start:0,limit:200}} filters:{{batch:{{Batch:{{eq:{}}}}}}}){{
+    data{{
+      id
+      attributes{{
+        trainee_id
+        email
+      }}
+    }}
+    }}
+    }}""".format(batch)
+
+    url = base_url+"/graphql?query={}".format(query)
+
+    try:
+        resp, resp_status = send_get_req(url)
+
+        return resp.json()["data"]["trainees"]["data"]
+    except Exception as e:
+        return {"error": e}
+
 
     
     
