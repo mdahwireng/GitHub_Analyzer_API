@@ -511,11 +511,16 @@ if github_token:
         ########################################################################################################################
 
         # Save users with Github User analysis error
+        output_dir = "data/run_errors"
+
         if len(user_error_dict["user"]) > 0:
 
             print("Saving users with Github User analysis error\n")
             user_error_df = pd.DataFrame(user_error_dict)
-            output_dir = "data"
+
+            if not os.path.isdir(output_dir):
+                os.makedirs(output_dir)
+
             now = datetime.now()
             user_error_df.to_csv("{}/users_with_github_user_analysis_error_{}.csv".format(output_dir, now.strftime("%Y_%m_%d__%H_%M_%S")), index=False)
     
@@ -524,7 +529,10 @@ if github_token:
 
             print("Saving users with Github Repo meta analysis error\n")
             repo_meta_error_df = pd.DataFrame(repo_meta_error_dict)
-            output_dir = "data"
+
+            if not os.path.isdir(output_dir):
+                os.makedirs(output_dir)
+
             now = datetime.now()
             repo_meta_error_df.to_csv("{}/users_with_github_repo_meta_analysis_error_{}.csv".format(output_dir, now.strftime("%Y_%m_%d__%H_%M_%S")), index=False)
 
@@ -534,7 +542,10 @@ if github_token:
 
             print("Saving users with Github Repo analysis error\n")
             repo_metric_error_df = pd.DataFrame(repo_metric_error_dict)
-            output_dir = "data"
+
+            if not os.path.isdir(output_dir):
+                os.makedirs(output_dir)
+
             now = datetime.now()
             repo_metric_error_df.to_csv("{}/users_with_github_repo_analysis_error_{}.csv".format(output_dir, now.strftime("%Y_%m_%d__%H_%M_%S")), index=False)
             
