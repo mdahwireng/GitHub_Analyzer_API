@@ -147,7 +147,7 @@ def get_table_data_strapi(url,token=False)->list:
         return [{"error": e}]
 
 
-def get_trainee_data(batch, base_url):
+def get_trainee_data(batch, base_url, token):
     """
     Gets trainee data from trainee table
     """
@@ -165,8 +165,13 @@ def get_trainee_data(batch, base_url):
 
     url = base_url+"/graphql?query={}".format(query)
 
+    if token:
+        headers = { "Authorization": "Bearer {}".format(token), "Content-Type": "application/json"}
+    else:
+        headers = {"Content-Type": "application/json"}
+
     try:
-        resp, resp_status = send_get_req(url)
+        resp, resp_status = send_get_req(url, headers)
 
         return resp.json()["data"]["trainees"]["data"]
     except Exception as e:
