@@ -44,7 +44,7 @@ if github_token and strapi_token:
             state_dict = pickle.load(s_d)
     
     else:
-        print("\nThe state file does not exist and system will exit now...\n")
+        print("\nThe state file does not exit and system will exit now...\n")
         sys.exit(1)
     
     week= "week{}".format(state_dict["week"])
