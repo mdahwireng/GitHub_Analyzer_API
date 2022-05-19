@@ -4,9 +4,9 @@ import json
 import os
 import sys
 import pandas as pd
-import requests
+import pickle
 import numpy as np
-from app import get_user, single_repos_meta_single_repos_pyanalysis
+from app import get_user
 
 
 curdir = os.path.dirname(os.path.realpath(__file__))
@@ -16,25 +16,42 @@ if not cpath in sys.path:
 
 
 
-from modules.strapi_methods import get_table_data_strapi, insert_data_strapi, update_data_strapi, upload_to_strapi    
-from modules.Category_Dict import Metrics_Summary_Dict
-from modules.analyzer_utils import get_break_points, get_df, get_df_dict, get_github_analysis_dict, get_id_userid_df, get_metric_category, get_metric_summary_dict, get_rank_dict, get_repo_df_dict, get_repo_meta_pyanalysis, get_repo_names, normalize_repo_data
+from modules.strapi_methods import get_table_data_strapi, get_trainee_data, insert_data_strapi, update_data_strapi   
+from modules.analyzer_utils import get_break_points, get_id_userid_df, get_metric_category, get_metric_summary_dict, get_repo_meta_pyanalysis,normalize_repo_data
+from modules.gdrive import gsheet
+from modules.Prepare_Github_Submissions import PrepareGithubDf
 
 if os.path.exists(".env/secret.json"):
     with open(".env/secret.json", "r") as s:
         secret = json.load(s)
         try:
             github_token = secret["github_token"]
+            strapi_token = secret["strapi_token"]["dev"]
         except:
             github_token = None
+            strapi_token = None
 else:
     github_token = None
+    strapi_token = None
 
 
-if github_token:
-    trainee_url = "https://dev-cms.10academy.org/api/{}"
-    trainee_plural_api = "trainees"
-    trainee_dict = get_table_data_strapi(trainee_url.format(trainee_plural_api))
+if github_token and strapi_token:
+
+    state_path = "data/api_state/week/week_state.pk"
+    
+    if os.path.exists(state_path):
+        with open(state_path, "rb") as s_d:
+            state_dict = pickle.load(s_d)
+    
+    else:
+        print("\nThe state file does not exit and system will exit now...\n")
+        sys.exit(1)
+    
+    week= "week{}".format(state_dict["week"])
+    batch = state_dict["batch"]
+
+    base_url = "https://dev-cms.10academy.org"
+    trainee_dict = get_trainee_data(batch=batch, base_url=base_url, token=strapi_token )
 
     # check if trainee_dict was returned
     if "error" not in trainee_dict:
@@ -48,9 +65,19 @@ if github_token:
         #github_df = dt_user.merge(dt_repo, on="trainee_id")
         #github_df = pd.read_csv("data/try.csv")
 
-        github_df = pd.read_csv("data/b4_wk11.csv")
-        week="week11"
-        batch = 4
+        gd = gsheet(sheetid="1gtkfGAmH9HR05_i7g6t2tF9t8LHfopybIhEqYdrxCSg",fauth='gdrive_10acad_auth.json')
+        gsheet_df = gd.get_sheet_df("b5_github_submissions")
+
+
+        prep_week = PrepareGithubDf(gsheet_df, week)
+        
+        week_submission_dir = "data/week_data/batch{}".format(batch)
+        week_submission_path = week_submission_dir + "/b{}_{}.csv".format(batch, week)
+        
+        if not os.path.isdir(week_submission_dir):
+            os.makedirs(week_submission_dir)
+
+        github_df = prep_week.get_df(week_submission_path)
 
         starter_code_url = None #"https://github.com/10xac/Twitter-Data-Analysis"
 
@@ -162,8 +189,8 @@ if github_token:
             hld = dict()
             if counter != 0 and counter%5 == 0:
                 print(user)
-                print("Sleeping for 30 seconds\n")
-                time.sleep(30)
+                print("Sleeping for 10 seconds\n")
+                time.sleep(10)
                 print("Resumed...\n")
 
             # get repo meta data and analysis data
@@ -206,11 +233,10 @@ if github_token:
                 print("User data dict created\n")
 
                 # check for entry in strapi
-                headers = {"Content-Type": "application/json"}
                 pluralapi = "github-user-metas"
                 q_url = "https://dev-cms.10academy.org/api/{}?filters[trainee][id][$eq]={}".format(pluralapi, trainee)
                 
-                r = get_table_data_strapi(q_url)
+                r = get_table_data_strapi(q_url, token=strapi_token)
                 
                 """try:
                     r = requests.get(
@@ -254,7 +280,7 @@ if github_token:
                     user_dict["week"] = week
                     user_dict["trainee"] = trainee
 
-                    insert_data_strapi(data=user_dict, pluralapi=pluralapi)
+                    insert_data_strapi(data=user_dict, pluralapi=pluralapi, token=strapi_token)
                     # create entry in strapi
                 
                 else:
@@ -281,7 +307,7 @@ if github_token:
                         # update entry in strapi
                         user_dict["week"] = week
                         user_dict["trainee"] = trainee
-                        update_data_strapi(data=user_dict, pluralapi=pluralapi, entry_id=r_list[0]['id'])         
+                        update_data_strapi(data=user_dict, pluralapi=pluralapi, entry_id=r_list[0]['id'], token=strapi_token)         
 
             else:
                 print("Error retrieving user data for user: {} and repo: {}\n".format(user, repo_name))
@@ -315,12 +341,11 @@ if github_token:
                 print("Repo data dict created\n")
 
                 # check for entry in strapi
-                headers = {"Content-Type": "application/json"}
                 pluralapi = "github-repo-metas"
                 week = week
                 q_url = "https://dev-cms.10academy.org/api/{}?filters[trainee][id][$eq]={}".format(pluralapi, trainee)
 
-                r = get_table_data_strapi(q_url)
+                r = get_table_data_strapi(q_url, token=strapi_token)
 
                 """try:
                     r = requests.get(
@@ -361,7 +386,7 @@ if github_token:
                     repo_dict["week"] = week
                     repo_dict["trainee"] = trainee
 
-                    insert_data_strapi(data=repo_dict, pluralapi=pluralapi)
+                    insert_data_strapi(data=repo_dict, pluralapi=pluralapi, token=strapi_token)
                 
                 else:
                     #check if entry is the same
@@ -387,7 +412,7 @@ if github_token:
                         # update entry in strapi
                         repo_dict["week"] = week
                         repo_dict["trainee"] = trainee
-                        update_data_strapi(data=repo_dict, pluralapi=pluralapi, entry_id=r_list[0]['id'])
+                        update_data_strapi(data=repo_dict, pluralapi=pluralapi, entry_id=r_list[0]['id'], token=strapi_token)
 
                 
 
@@ -424,12 +449,11 @@ if github_token:
 
 
                 # check for entry in strapi
-                headers = {"Content-Type": "application/json"}
                 pluralapi = "github-repo-metrics"
                 week = week
                 q_url = "https://dev-cms.10academy.org/api/{}?filters[trainee][id][$eq]={}".format(pluralapi, trainee)
 
-                r = get_table_data_strapi(q_url)
+                r = get_table_data_strapi(q_url, token=strapi_token)
                 
                 """try:
                     r = requests.get(
@@ -471,7 +495,7 @@ if github_token:
                     repo_analysis_dict["week"] = week
                     repo_analysis_dict["trainee"] = trainee
 
-                    insert_data_strapi(data=repo_analysis_dict, pluralapi=pluralapi)
+                    insert_data_strapi(data=repo_analysis_dict, pluralapi=pluralapi, token=strapi_token)
 
                     entry_made_into_analysis_table = True
                 else:
@@ -498,7 +522,7 @@ if github_token:
                         # update entry in strapi
                         repo_analysis_dict["week"] = week
                         repo_analysis_dict["trainee"] = trainee
-                        update_data_strapi(data=repo_analysis_dict, pluralapi=pluralapi, entry_id=r_list[0]['id'])
+                        update_data_strapi(data=repo_analysis_dict, pluralapi=pluralapi, entry_id=r_list[0]['id'], token=strapi_token)
 
                         entry_made_into_analysis_table = True   
             else:
@@ -512,11 +536,16 @@ if github_token:
         ########################################################################################################################
 
         # Save users with Github User analysis error
+        output_dir = "data/run_errors"
+
         if len(user_error_dict["user"]) > 0:
 
             print("Saving users with Github User analysis error\n")
             user_error_df = pd.DataFrame(user_error_dict)
-            output_dir = "data"
+
+            if not os.path.isdir(output_dir):
+                os.makedirs(output_dir)
+
             now = datetime.now()
             user_error_df.to_csv("{}/users_with_github_user_analysis_error_{}.csv".format(output_dir, now.strftime("%Y_%m_%d__%H_%M_%S")), index=False)
     
@@ -525,7 +554,10 @@ if github_token:
 
             print("Saving users with Github Repo meta analysis error\n")
             repo_meta_error_df = pd.DataFrame(repo_meta_error_dict)
-            output_dir = "data"
+
+            if not os.path.isdir(output_dir):
+                os.makedirs(output_dir)
+
             now = datetime.now()
             repo_meta_error_df.to_csv("{}/users_with_github_repo_meta_analysis_error_{}.csv".format(output_dir, now.strftime("%Y_%m_%d__%H_%M_%S")), index=False)
 
@@ -535,7 +567,10 @@ if github_token:
 
             print("Saving users with Github Repo analysis error\n")
             repo_metric_error_df = pd.DataFrame(repo_metric_error_dict)
-            output_dir = "data"
+
+            if not os.path.isdir(output_dir):
+                os.makedirs(output_dir)
+
             now = datetime.now()
             repo_metric_error_df.to_csv("{}/users_with_github_repo_analysis_error_{}.csv".format(output_dir, now.strftime("%Y_%m_%d__%H_%M_%S")), index=False)
             
@@ -552,11 +587,10 @@ if github_token:
             print("Computing Analysis Metrics Summary...\n")
 
             # get the analysis metrics summary
-            headers = {"Content-Type": "application/json"}
             pluralapi = "github-repo-metrics"
             q_url = "https://dev-cms.10academy.org/api/{}?filters[week][$eq]={}".format(pluralapi, week)
             
-            r = get_table_data_strapi(q_url)
+            r = get_table_data_strapi(q_url, token=strapi_token)
             
             try:
                 """r = requests.get(
@@ -570,11 +604,12 @@ if github_token:
 
                     for col in repo_metrics_cols:
                         for entry in r_data:
-                            # ignore place holders for null values
-                            if (isinstance(entry["attributes"][col],float) and entry["attributes"][col] != -999.0) or (isinstance(entry["attributes"][col],int) and entry["attributes"][col] != -999) or (isinstance(entry["attributes"][col],str)):
-                                df_dict[col].append(entry["attributes"][col])
-                            else:
-                                df_dict[col].append(None)
+                            if entry["attributes"]["trainee_id"] in trainee_df.trainee_id.values:
+                                # ignore place holders for null values
+                                if (isinstance(entry["attributes"][col],float) and entry["attributes"][col] != -999.0) or (isinstance(entry["attributes"][col],int) and entry["attributes"][col] != -999) or (isinstance(entry["attributes"][col],str)):
+                                    df_dict[col].append(entry["attributes"][col])
+                                else:
+                                    df_dict[col].append(None)
 
                     cat_df = pd.DataFrame(df_dict)
 
@@ -626,10 +661,9 @@ if github_token:
                         print("Loading data into strapi...\n")
                         # check if entry exists
                         print("Checking if entry exists...\n")
-                        headers = {"Content-Type": "application/json"}
                         q_url = "https://dev-cms.10academy.org/api/{}?filters[week][$eq]={}&filters[trainee_id][$eq]={}".format(pluralapi, week, r["trainee_id"])
                         
-                        r_list = get_table_data_strapi(q_url)
+                        r_list = get_table_data_strapi(q_url, token=strapi_token)
                         
                         """try:
                             r_list = requests.get(
@@ -644,19 +678,19 @@ if github_token:
 
                         if len(r_list) > 0: 
                             if "error" not in r_list[0]:
-                                print("Entry already exists for user: {} and week: {}\n".format(r["trainee_id"], week))
+                                print("Entry already exists for user: {} for week: {}\n".format(r["trainee_id"], week))
                                 # update entry in strapi
-                                print("Updating entry for user user: {} and week: {}\n".format(r["trainee_id"], week))
-                                update_data_strapi(data=r, pluralapi=pluralapi, entry_id=r_list[0]['id'])
+                                print("Updating entry for user: {} for week: {}\n".format(r["trainee_id"], week))
+                                update_data_strapi(data=r, pluralapi=pluralapi, entry_id=r_list[0]['id'], token=strapi_token)
                             else:
-                                print("Error checking if entry exists for user: {} and week: {}\n".format(r["trainee_id"], week))
+                                print("Error checking if entry exists for user: {} for week: {}\n".format(r["trainee_id"], week))
                                 print(r_list[0])
                                 print("\n")
                         else:
                             # create entry in strapi
                             print("Entry does not exist for user: {} and week: {}\n".format(r["trainee_id"], week))
                             print("Creating entry in strapi...\n")
-                            insert_data_strapi(data=r, pluralapi=pluralapi)
+                            insert_data_strapi(data=r, pluralapi=pluralapi, token=strapi_token)
 
                             
                     
@@ -679,11 +713,10 @@ if github_token:
                         print("Loading data into strapi...\n")
                         # check if entry exists
                         print("Checking if entry exists...\n")
-                        headers = {"Content-Type": "application/json"}
-                        q_url = "https://dev-cms.10academy.org/api/{}?filters[week][$eq]={}&filters[metrics][$eq]={}".format(pluralapi, week, r["metrics"])
+                        q_url = "https://dev-cms.10academy.org/api/{}?filters[week][$eq]={}&filters[metrics][$eq]={}&filters[batch][$eq]={}".format(pluralapi, week, r["metrics"], r["batch"])
                         
 
-                        r_list = get_table_data_strapi(q_url)
+                        r_list = get_table_data_strapi(q_url, token=strapi_token)
                         
                         """try:
                             r_list = requests.get(
@@ -696,18 +729,18 @@ if github_token:
 
                         if len(r_list) > 0:
                             if "error" not in r_list[0]:
-                                print("Entry already exists for week: {}\n".format(week))
+                                print("Entry already exists for batch {} metrics:{} for week: {}\n".format(r["batch"], r["metrics"], week))
                                 # update entry in strapi
-                                update_data_strapi(data=r, pluralapi=pluralapi, entry_id=r_list[0]['id'])
+                                update_data_strapi(data=r, pluralapi=pluralapi, entry_id=r_list[0]['id'], token=strapi_token)
                             else:
-                                print("Error checking if entry exists for week: {}\n".format(week))
+                                print("Error checking if entry exists for batch {} metrics:{} for week: {}\n".format(r["batch"], r["metrics"], week))
                                 print(r_list[0])
                                 print("\n")
                         else:
                             # create entry in strapi
                             print("Entry does not exist for week: {}\n".format(week))
                             print("Creating entry in strapi...\n")
-                            insert_data_strapi(data=r, pluralapi=pluralapi)
+                            insert_data_strapi(data=r, pluralapi=pluralapi, token=strapi_token)
 
 
                 else:
@@ -726,12 +759,12 @@ if github_token:
         
     else:
         # if trainee data is not returned
-        print("Error: trainee data was not returned")
+        print("Trainee data was not returned\nError: {}".format(trainee_dict["error"]))
         sys.exit(1)
 
 else:
     # if token is not returned
-    print("Error: github token was not found")
+    print("Error: Github and Strapi tokens were not found")
     sys.exit(1)
 
 
