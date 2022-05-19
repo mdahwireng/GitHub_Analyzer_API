@@ -26,7 +26,7 @@ if os.path.exists(".env/secret.json"):
         secret = json.load(s)
         try:
             github_token = secret["github_token"]
-            strapi_token = secret["strapi_token"]
+            strapi_token = secret["strapi_token"]["dev"]
         except:
             github_token = None
             strapi_token = None

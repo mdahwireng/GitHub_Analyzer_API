@@ -1,3 +1,7 @@
+import json
+import os
+import sys
+
 from modules.api_utils import send_get_req
 from modules.strapi_methods import get_table_data_strapi, insert_data_strapi, update_data_strapi
 
@@ -116,23 +120,23 @@ def dev_to_prod(dev_url, prod_url, plural_api, index_cols, token, table=None):
         dev_base_url = dev_url[:-3]
         prod_base_url = prod_url[:-3]
 
-    dev_data = retrieve_table_data(url=dev_url+"/"+plural_api, index_cols=index_cols, token=token)
+    dev_data = retrieve_table_data(url=dev_url+"/"+plural_api, index_cols=index_cols, token=token["dev"])
     
     for k,v in dev_data.items():
         dev_entry_id = v["id"]
         
         if table:
-            v["attributes"]["trainee"] = get_trainee_relation_id(base_url=dev_base_url, table=table, entry_id=dev_entry_id, token=token)
+            v["attributes"]["trainee"] = get_trainee_relation_id(base_url=dev_base_url, table=table, entry_id=dev_entry_id, token=token["dev"])
 
         dev_key = k
         dev_values = v["attributes"]
         
-        prod_data = query_table(url=prod_url, pluralapi=plural_api, index_cols=index_cols, data = dev_values, token=token)
+        prod_data = query_table(url=prod_url, pluralapi=plural_api, index_cols=index_cols, data = dev_values, token=token["prod"])
 
         if table:
-            check = run_checks(dev_key=dev_key, dev_values=dev_values, prod_data=prod_data, prod_base_url=prod_base_url, table=table, token=token)
+            check = run_checks(dev_key=dev_key, dev_values=dev_values, prod_data=prod_data, prod_base_url=prod_base_url, table=table, token=token["prod"])
         else:
-            check = run_checks(dev_key=dev_key, dev_values=dev_values, prod_data=prod_data, prod_base_url=prod_base_url, token=token)
+            check = run_checks(dev_key=dev_key, dev_values=dev_values, prod_data=prod_data, token=token["prod"])
 
         if check == "pass":
             pass
@@ -142,32 +146,51 @@ def dev_to_prod(dev_url, prod_url, plural_api, index_cols, token, table=None):
             prod_value_id = prod_data[dev_key]["id"]
             
             #update production table
-            update_data_strapi(data=dev_values, pluralapi=plural_api, entry_id=prod_value_id, url=prod_url, token=token)
+            update_data_strapi(data=dev_values, pluralapi=plural_api, entry_id=prod_value_id, url=prod_url, token=token["prod"])
 
         elif check == "insert":
             print("Creating entry in production table...\n\n")
             
             #insert entry in production table
-            insert_data_strapi(data=dev_values, pluralapi=plural_api, url=prod_url, token=token)
+            insert_data_strapi(data=dev_values, pluralapi=plural_api, url=prod_url, token=token["prod"])
 
 
 if __name__ == "__main__":
 
-    dev_url = "https://dev-cms.10academy.org/api"
-    prod_url = "https://cms.10academy.org/api"
+    if os.path.exists(".env/secret.json"):
+        with open(".env/secret.json", "r") as s:
+            secret = json.load(s)
+            try:
+                strapi_token = secret["strapi_token"]
+            except:
+                strapi_token = None
+    else:
+        strapi_token = None
 
-    p_api_index_dict = {"github-user-metas":{"index":["trainee_id", "week"], "graphql":"githubUserMeta"}, 
-                        "github-repo-metas":{"index":["trainee_id", "week"], "graphql":"githubRepoMeta"}, 
-                        "github-repo-metrics":{"index":["trainee_id", "week"], "graphql":"githubRepoMetric"}, 
-                        "github-repo-metric-ranks":{"index":["trainee_id", "week"], "graphql":"githubRepoMetricRank"}, 
-                        "github-metrics-summaries":{"index":["metrics", "batch", "week"]}}
+    
+    if strapi_token:
 
-    for k,v in p_api_index_dict.items():
-        plural_api = k
-        index_cols = v["index"]
 
-        if "graphql" in v:
-            table = v["graphql"]
-        else:
-            table = None
-        dev_to_prod(dev_url, prod_url, plural_api=plural_api, index_cols=index_cols, table=table)
+        dev_url = "https://dev-cms.10academy.org/api"
+        prod_url = "https://cms.10academy.org/api"
+
+        p_api_index_dict = {"github-user-metas":{"index":["trainee_id", "week"], "graphql":"githubUserMeta"}, 
+                            "github-repo-metas":{"index":["trainee_id", "week"], "graphql":"githubRepoMeta"}, 
+                            "github-repo-metrics":{"index":["trainee_id", "week"], "graphql":"githubRepoMetric"}, 
+                            "github-repo-metric-ranks":{"index":["trainee_id", "week"], "graphql":"githubRepoMetricRank"}, 
+                            "github-metrics-summaries":{"index":["metrics", "batch", "week"]}}
+
+        for k,v in p_api_index_dict.items():
+            plural_api = k
+            index_cols = v["index"]
+
+            if "graphql" in v:
+                table = v["graphql"]
+            else:
+                table = None
+            dev_to_prod(dev_url=dev_url, prod_url=prod_url, plural_api=plural_api, index_cols=index_cols, table=table, token=strapi_token)
+    
+    else:
+        # if token is not returned
+        print("Error: Strapi tokens were not found")
+        sys.exit(1)
