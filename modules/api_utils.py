@@ -967,3 +967,32 @@ def get_jsrepo_level_summary(files, file_level):
     repo_summary["cc_rank"] = cc_rank(repo_summary["cc"])
 
     return repo_summary
+
+
+def get_recent_commit_stamp() -> dict:
+    """
+    Returns a dictionary of the most recent commit shas and the timestamp of the most recent commit
+
+    Args:
+        None
+
+    Returns:
+        A dictionary of the most recent commit shas and the timestamp of the most recent commit
+    """
+    stdout, stderr, return_code = run_cmd_process(cmd_list = ['git', 'log', '-n', '1', '--pretty=format:%H/%ct/%aN/%s'])
+    if return_code == 0:
+        lines = stdout.split("\n")
+        if len(lines) == 1:
+            details = lines[0].split("/")
+
+            #get branch name
+            stdout, stderr, return_code = run_cmd_process(cmd_list=['git', 'branch'])
+            if return_code == 0: 
+                print(stdout)
+                branch = [a for a in stdout.split('\n') if a.find('*') >= 0][0]
+                branch = branch.replace('*', '').strip()
+                return {"branch": branch, "commit_sha": details[0], "commit_ts": details[1], "author": details[2], "message": details[3]}
+        else:
+            return  {"branch": "", "commit_sha": "", "commit_stamp": "", "author": "", "message": ""}
+    else:
+        return {"error": stderr}

@@ -243,31 +243,42 @@ def get_metric_category(val, break_points, reverse=False)->str:
     if int(val) == -999 or float(val) == -999.0:
         return "N/A"
     if sum(break_points) == 0:
-        return "top 25%"
-    if reverse:
-        if val < break_points[0]:
-            return "top 25%"
-
-        elif val < break_points[1]:
-            return "top 50%"
-
-        elif val < break_points[2]:
-            return "top 75%"
-
-        else:
-            return "bottom 25%"
-    else:
-        if val < break_points[0]:
-            return "bottom 25%"
+        return "bottom 50%"
     
-        elif val < break_points[1]:
-            return "top 75%"
+    if val == 0:
+        return "bottom 50%"
+    
+    if reverse:
+        if val <= break_points[0]:
+            return "top 1%"
 
-        elif val < break_points[2]:
+        elif val <= break_points[1]:
+            return "top 10%"
+
+        elif val <= break_points[2]:
+            return "top 25%"
+
+        elif val <= break_points[3]:
             return "top 50%"
 
         else:
+            return "bottom 50%"
+    
+    else:
+        if val >= break_points[0]:
+            return "top 1%"
+
+        elif val >= break_points[1]:
+            return "top 10%"
+
+        elif val >= break_points[2]:
             return "top 25%"
+
+        elif val >= break_points[3]:
+            return "top 50%"
+
+        else:
+            return "bottom 50%"
 
 
 
@@ -406,23 +417,46 @@ def get_df(week, _dict)-> pd.DataFrame:
 
 
 
-def get_break_points(_min,_max, num_cat=4)->list:
+def get_break_points(series, cat_list=[0.99, 0.9, 0.75, 0.5], reverse=False, _add=False)->tuple:
     """
     Gets the break points for the given min and max values.
     Returns the break points.
 
         Args:
-            _min (int): The min value.
-            _max (int): The max value.
-            num_cat (int): The number of categories.
+            series (pandas series): The values to calculate breakpoints, min, max and sum from.
+            cat_list (list): The deciles to be used to calculate the breakpoints 
+            reverse (bool): The reverse flag
+            _add (bool): The flag to indicate if the sum should be calculated
 
         Returns:
-            list: The break points.
+            tuple: break_points, _min, _max, _sum if _add is true else break_points, _min, _max
     """
-    div = (_max  - _min)/num_cat
+    # find the reverse for values which best when less
+    if reverse:
+        cat_list = [1-bp for bp in cat_list]
+
+    _min = float(series.min())
+    _max = float(series.max())
+    
+    div = _max  - _min
+
     if div == 0:
-        return [0 for i in range(num_cat)]
-    return [_min + (i*div) for i in range(1,num_cat)]
+        break_points = [0 for i in range(len(cat_list))]
+    else:
+        #break_points = list(series.quantile(cat_list).values)
+        break_points = series.quantile(cat_list, interpolation='lower').to_list()
+
+        #print(f"\n\n###################{break_points}###################\n\n")
+
+    if _add:
+        _sum = float(series.sum())
+
+        return break_points, _min, _max, _sum
+    
+    else:
+
+        return break_points, _min, _max
+
 
 # get repo meta data and analysis data
             

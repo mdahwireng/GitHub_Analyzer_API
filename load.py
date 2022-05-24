@@ -46,8 +46,11 @@ if github_token and strapi_token:
     else:
         print("\nThe state file does not exit and system will exit now...\n")
         sys.exit(1)
+
+    current_week = datetime.now().isocalendar()[1] - 1
+    training_week = current_week - 18
     
-    week= "week{}".format(state_dict["week"])
+    week= "week{}".format(training_week)
     batch = state_dict["batch"]
 
     base_url = "https://dev-cms.10academy.org"
@@ -143,11 +146,11 @@ if github_token and strapi_token:
                         'issues':-999, 'name':"", 'public_repos':-999, 'pull_requests':-999}
 
         repo_df_cols = ["repo_name","trainee_id",'branches', 'contributors', 'description', 'forks', 'html_url', 'languages', 'total_commits', 
-                        "interested_files", "num_ipynb", "num_js", "num_py", "num_dirs", "num_files"]
+                        "interested_files", "num_ipynb", "num_js", "num_py", "num_dirs", "num_files", "commit_stamp"]
 
 
         repo_df_cols_default = {"repo_name":"","trainee_id":"",'branches':-999, 'contributors':[], 'description':"", 'forks':-999, 'html_url':"", 'languages':[], 'total_commits':-999, 
-                        "interested_files":[], "num_ipynb":-999, "num_js":-999, "num_py":-999, "num_dirs":-999, "num_files":-999}
+                        "interested_files":[], "num_ipynb":-999, "num_js":-999, "num_py":-999, "num_dirs":-999, "num_files":-999, "commit_stamp":[]}
 
 
         repo_analysis_df_cols = ["trainee_id",'additions', 'avg_lines_per_class', 'avg_lines_per_function', 'avg_lines_per_method',
@@ -189,8 +192,8 @@ if github_token and strapi_token:
             hld = dict()
             if counter != 0 and counter%5 == 0:
                 print(user)
-                print("Sleeping for 10 seconds\n")
-                time.sleep(10)
+                print("Sleeping for 20 seconds\n")
+                time.sleep(20)
                 print("Resumed...\n")
 
             # get repo meta data and analysis data
@@ -616,7 +619,22 @@ if github_token and strapi_token:
                     cat_dict = {col:{"max":None, "min":None, "sum":None, "break_points":None} for col in metrics_list}
 
                     for col in metrics_list:
-                        _min = cat_df[[col]].min().to_list()[0]
+                        
+                        rev = False
+                        series = cat_df[col]
+                        if col == "cc":
+                            rev = True
+                            
+                            # remove zero values for cyclomatic complexity analysis
+                            series = cat_df[col][cat_df[col] != 0]
+                        
+                        if col in sum_list:
+                            cat_dict[col]["break_points"], cat_dict[col]["min"], cat_dict[col]["max"], cat_dict[col]["sum"] = get_break_points(series = series, cat_list=[0.99, 0.9, 0.75, 0.5], reverse=rev, _add=True)
+
+                        else:
+                            cat_dict[col]["break_points"], cat_dict[col]["min"], cat_dict[col]["max"] = get_break_points(series = series, cat_list=[0.99, 0.9, 0.75, 0.5], reverse=rev, _add=False)
+                        
+                        """_min = cat_df[[col]].min().to_list()[0]
                         _max = cat_df[[col]].max().to_list()[0]
                         cat_dict[col]["max"] = _max
                         cat_dict[col]["min"] = _min
@@ -624,7 +642,8 @@ if github_token and strapi_token:
                        
                         # compute sum for eligible columns
                         if col in sum_list:
-                            cat_dict[col]["sum"] = cat_df[[col]].sum().to_list()[0]
+                            cat_dict[col]["sum"] = cat_df[[col]].sum().to_list()[0]"""
+
 
                     # create rannk dict
                     rank_dict = {col:[] for col in repo_metrics_cols}
