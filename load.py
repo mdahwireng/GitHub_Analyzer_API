@@ -46,8 +46,11 @@ if github_token and strapi_token:
     else:
         print("\nThe state file does not exit and system will exit now...\n")
         sys.exit(1)
+
+    current_week = datetime.now().isocalendar()[1] - 1
+    training_week = current_week - 18
     
-    week= "week{}".format(state_dict["week"])
+    week= "week{}".format(training_week)
     batch = state_dict["batch"]
 
     base_url = "https://dev-cms.10academy.org"
@@ -64,6 +67,8 @@ if github_token and strapi_token:
         #dt_repo = pd.read_csv("data/github_repos_wk1.csv")
         #github_df = dt_user.merge(dt_repo, on="trainee_id")
         #github_df = pd.read_csv("data/try.csv")
+        #github_df = pd.read_csv("data/week_data/batch4/b4_wk{}.csv".format(training_week))
+        #github_df = pd.read_csv("data/week_data/batch5/b5_week0_github_df.csv")
 
         gd = gsheet(sheetid="1gtkfGAmH9HR05_i7g6t2tF9t8LHfopybIhEqYdrxCSg",fauth='gdrive_10acad_auth.json')
         gsheet_df = gd.get_sheet_df("b5_github_submissions")
@@ -143,11 +148,11 @@ if github_token and strapi_token:
                         'issues':-999, 'name':"", 'public_repos':-999, 'pull_requests':-999}
 
         repo_df_cols = ["repo_name","trainee_id",'branches', 'contributors', 'description', 'forks', 'html_url', 'languages', 'total_commits', 
-                        "interested_files", "num_ipynb", "num_js", "num_py", "num_dirs", "num_files"]
+                        "interested_files", "num_ipynb", "num_js", "num_py", "num_dirs", "num_files", "commit_stamp"]
 
 
         repo_df_cols_default = {"repo_name":"","trainee_id":"",'branches':-999, 'contributors':[], 'description':"", 'forks':-999, 'html_url':"", 'languages':[], 'total_commits':-999, 
-                        "interested_files":[], "num_ipynb":-999, "num_js":-999, "num_py":-999, "num_dirs":-999, "num_files":-999}
+                        "interested_files":[], "num_ipynb":-999, "num_js":-999, "num_py":-999, "num_dirs":-999, "num_files":-999, "commit_stamp":[]}
 
 
         repo_analysis_df_cols = ["trainee_id",'additions', 'avg_lines_per_class', 'avg_lines_per_function', 'avg_lines_per_method',
@@ -189,8 +194,8 @@ if github_token and strapi_token:
             hld = dict()
             if counter != 0 and counter%5 == 0:
                 print(user)
-                print("Sleeping for 10 seconds\n")
-                time.sleep(10)
+                print("Sleeping for 20 seconds\n")
+                time.sleep(20)
                 print("Resumed...\n")
 
             # get repo meta data and analysis data
@@ -540,39 +545,39 @@ if github_token and strapi_token:
 
         if len(user_error_dict["user"]) > 0:
 
-            print("Saving users with Github User analysis error\n")
+            print("Saving trainees with Github User analysis error\n")
             user_error_df = pd.DataFrame(user_error_dict)
 
             if not os.path.isdir(output_dir):
                 os.makedirs(output_dir)
 
             now = datetime.now()
-            user_error_df.to_csv("{}/users_with_github_user_analysis_error_{}.csv".format(output_dir, now.strftime("%Y_%m_%d__%H_%M_%S")), index=False)
+            user_error_df.to_csv("{}/b{}_{}_trainees_with_github_user_analysis_error_{}.csv".format(output_dir, batch, week, now.strftime("%Y_%m_%d__%H_%M_%S")), index=False)
     
         # Save users with Github Repo analysis error
         if len(repo_meta_error_dict["user"]) > 0:
 
-            print("Saving users with Github Repo meta analysis error\n")
+            print("Saving trainees with Github Repo meta analysis error\n")
             repo_meta_error_df = pd.DataFrame(repo_meta_error_dict)
 
             if not os.path.isdir(output_dir):
                 os.makedirs(output_dir)
 
             now = datetime.now()
-            repo_meta_error_df.to_csv("{}/users_with_github_repo_meta_analysis_error_{}.csv".format(output_dir, now.strftime("%Y_%m_%d__%H_%M_%S")), index=False)
+            repo_meta_error_df.to_csv("{}/b{}_{}_trainees_with_github_repo_meta_analysis_error_{}.csv".format(output_dir, batch, week, now.strftime("%Y_%m_%d__%H_%M_%S")), index=False)
 
         
         # Save users with Github Repo analysis error
         if len(repo_metric_error_dict["user"]) > 0:
 
-            print("Saving users with Github Repo analysis error\n")
+            print("Saving trainees with Github Repo analysis error\n")
             repo_metric_error_df = pd.DataFrame(repo_metric_error_dict)
 
             if not os.path.isdir(output_dir):
                 os.makedirs(output_dir)
 
             now = datetime.now()
-            repo_metric_error_df.to_csv("{}/users_with_github_repo_analysis_error_{}.csv".format(output_dir, now.strftime("%Y_%m_%d__%H_%M_%S")), index=False)
+            repo_metric_error_df.to_csv("{}/b{}_{}_trainees_with_github_repo_analysis_error_{}.csv".format(output_dir, batch, week, now.strftime("%Y_%m_%d__%H_%M_%S")), index=False)
             
             
         if len(user_error_dict["user"]) == 0 and len(repo_meta_error_dict["user"]) == 0 and len(repo_metric_error_dict["user"]) == 0:
@@ -616,7 +621,22 @@ if github_token and strapi_token:
                     cat_dict = {col:{"max":None, "min":None, "sum":None, "break_points":None} for col in metrics_list}
 
                     for col in metrics_list:
-                        _min = cat_df[[col]].min().to_list()[0]
+                        
+                        rev = False
+                        series = cat_df[col]
+                        if col == "cc":
+                            rev = True
+                            
+                            # remove zero values for cyclomatic complexity analysis
+                            series = cat_df[col][cat_df[col] != 0]
+                        
+                        if col in sum_list:
+                            cat_dict[col]["break_points"], cat_dict[col]["min"], cat_dict[col]["max"], cat_dict[col]["sum"] = get_break_points(series = series, cat_list=[0.99, 0.9, 0.75, 0.5], reverse=rev, _add=True)
+
+                        else:
+                            cat_dict[col]["break_points"], cat_dict[col]["min"], cat_dict[col]["max"] = get_break_points(series = series, cat_list=[0.99, 0.9, 0.75, 0.5], reverse=rev, _add=False)
+                        
+                        """_min = cat_df[[col]].min().to_list()[0]
                         _max = cat_df[[col]].max().to_list()[0]
                         cat_dict[col]["max"] = _max
                         cat_dict[col]["min"] = _min
@@ -624,7 +644,8 @@ if github_token and strapi_token:
                        
                         # compute sum for eligible columns
                         if col in sum_list:
-                            cat_dict[col]["sum"] = cat_df[[col]].sum().to_list()[0]
+                            cat_dict[col]["sum"] = cat_df[[col]].sum().to_list()[0]"""
+
 
                     # create rannk dict
                     rank_dict = {col:[] for col in repo_metrics_cols}

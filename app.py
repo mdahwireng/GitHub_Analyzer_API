@@ -10,7 +10,7 @@ cpath = os.path.dirname(curdir)
 if not cpath in sys.path:
     sys.path.append(cpath)
 
-from modules.api_utils import add_js_additions, check_lang_exit, get_cc_summary, get_file_level_summary, get_js_cc_summary, get_jsrepo_level_summary, get_repo_level_summary, retrieve_repo_meta, run_jsanalysis, run_pyanalysis, run_to_get_adds_and_save_content, send_get_req
+from modules.api_utils import add_js_additions, check_lang_exit, get_cc_summary, get_file_level_summary, get_js_cc_summary, get_jsrepo_level_summary, get_recent_commit_stamp, get_repo_level_summary, retrieve_repo_meta, run_jsanalysis, run_pyanalysis, run_to_get_adds_and_save_content, send_get_req
 
 
 app = Flask(__name__)
@@ -317,7 +317,9 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, api=True)-
             # Add file check results to repo meta
             dt[repo_name].update(file_check_results)
             dt[repo_name]["repo_name"] = repo_name
-
+            
+            # add commit stamp to repo meta
+            dt[repo_name]["commit_stamp"] = get_recent_commit_stamp()
             # if there is no error
             if return_code == 0:
 
