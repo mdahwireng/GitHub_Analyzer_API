@@ -67,6 +67,8 @@ if github_token and strapi_token:
         #dt_repo = pd.read_csv("data/github_repos_wk1.csv")
         #github_df = dt_user.merge(dt_repo, on="trainee_id")
         #github_df = pd.read_csv("data/try.csv")
+        #github_df = pd.read_csv("data/week_data/batch4/b4_wk{}.csv".format(training_week))
+        #github_df = pd.read_csv("data/week_data/batch5/b5_week0_github_df.csv")
 
         gd = gsheet(sheetid="1gtkfGAmH9HR05_i7g6t2tF9t8LHfopybIhEqYdrxCSg",fauth='gdrive_10acad_auth.json')
         gsheet_df = gd.get_sheet_df("b5_github_submissions")
@@ -543,39 +545,39 @@ if github_token and strapi_token:
 
         if len(user_error_dict["user"]) > 0:
 
-            print("Saving users with Github User analysis error\n")
+            print("Saving trainees with Github User analysis error\n")
             user_error_df = pd.DataFrame(user_error_dict)
 
             if not os.path.isdir(output_dir):
                 os.makedirs(output_dir)
 
             now = datetime.now()
-            user_error_df.to_csv("{}/users_with_github_user_analysis_error_{}.csv".format(output_dir, now.strftime("%Y_%m_%d__%H_%M_%S")), index=False)
+            user_error_df.to_csv("{}/b{}_{}_trainees_with_github_user_analysis_error_{}.csv".format(output_dir, batch, week, now.strftime("%Y_%m_%d__%H_%M_%S")), index=False)
     
         # Save users with Github Repo analysis error
         if len(repo_meta_error_dict["user"]) > 0:
 
-            print("Saving users with Github Repo meta analysis error\n")
+            print("Saving trainees with Github Repo meta analysis error\n")
             repo_meta_error_df = pd.DataFrame(repo_meta_error_dict)
 
             if not os.path.isdir(output_dir):
                 os.makedirs(output_dir)
 
             now = datetime.now()
-            repo_meta_error_df.to_csv("{}/users_with_github_repo_meta_analysis_error_{}.csv".format(output_dir, now.strftime("%Y_%m_%d__%H_%M_%S")), index=False)
+            repo_meta_error_df.to_csv("{}/b{}_{}_trainees_with_github_repo_meta_analysis_error_{}.csv".format(output_dir, batch, week, now.strftime("%Y_%m_%d__%H_%M_%S")), index=False)
 
         
         # Save users with Github Repo analysis error
         if len(repo_metric_error_dict["user"]) > 0:
 
-            print("Saving users with Github Repo analysis error\n")
+            print("Saving trainees with Github Repo analysis error\n")
             repo_metric_error_df = pd.DataFrame(repo_metric_error_dict)
 
             if not os.path.isdir(output_dir):
                 os.makedirs(output_dir)
 
             now = datetime.now()
-            repo_metric_error_df.to_csv("{}/users_with_github_repo_analysis_error_{}.csv".format(output_dir, now.strftime("%Y_%m_%d__%H_%M_%S")), index=False)
+            repo_metric_error_df.to_csv("{}/b{}_{}_trainees_with_github_repo_analysis_error_{}.csv".format(output_dir, batch, week, now.strftime("%Y_%m_%d__%H_%M_%S")), index=False)
             
             
         if len(user_error_dict["user"]) == 0 and len(repo_meta_error_dict["user"]) == 0 and len(repo_metric_error_dict["user"]) == 0:

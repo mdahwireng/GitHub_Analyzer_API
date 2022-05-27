@@ -987,8 +987,7 @@ def get_recent_commit_stamp() -> dict:
 
             #get branch name
             stdout, stderr, return_code = run_cmd_process(cmd_list=['git', 'branch'])
-            if return_code == 0: 
-                print(stdout)
+            if return_code == 0:
                 branch = [a for a in stdout.split('\n') if a.find('*') >= 0][0]
                 branch = branch.replace('*', '').strip()
                 return {"branch": branch, "commit_sha": details[0], "commit_ts": details[1], "author": details[2], "message": details[3]}
