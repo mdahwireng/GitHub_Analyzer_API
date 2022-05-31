@@ -478,7 +478,8 @@ def get_repo_meta_pyanalysis(user, github_token, repo_name)->dict:
 
     hld = dict()
     try:
-        hld["repo_meta"] = repo_meta_repo_pyanalysis["repo_meta"][repo_name]
+        real_repo_name = [name for name in repo_meta_repo_pyanalysis["repo_meta"] if repo_name.lower() == name.lower()]
+        hld["repo_meta"] = repo_meta_repo_pyanalysis["repo_meta"][real_repo_name[0]]
 
     except:
         hld["repo_meta"] = repo_meta_repo_pyanalysis["repo_meta"]
