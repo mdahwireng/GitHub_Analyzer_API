@@ -131,10 +131,29 @@ def retrieve_num_branches(user, repo, headers) -> int:
 
     # retrieve number of branches and return the value
     return len(send_get_req(_url=branches_url, _header=headers)[0].json())
+
+
+def retrieve_branch_sha(user, repo, headers, branch) -> str:
+    """
+    Retrieves the sha of a branch in a github repository. 
+    Returns string of the sha of the branch
+
+    Args:
+        user(str): github username
+        repo(str): name of repo to retrieve meta data from
+        headers(dict): header to attach to the request
+        branch(str): name of branch to retrieve sha of
+
+    Returns:
+        string of the sha of the branch
+    """
+    branch_url = "https://api.github.com/repos/{}/{}/branches/{}".format(user,repo,branch)
+    return send_get_req(_url=branch_url, _header=headers)[0].json()["commit"]["sha"]
+
    
 
 
-def retrieve_num_commits(user, repo, headers) -> int:
+def retrieve_num_commits(user, repo, headers, sha=None) -> int:
     """
     Retrieves the number of commits in a github repository. 
     Returns integer of the number of commits
@@ -143,15 +162,23 @@ def retrieve_num_commits(user, repo, headers) -> int:
         user(str): github username
         repo(str): name of repo to retrieve meta data from
         headers(dict): header to attach to the request
+        sha(str): sha of branch to retrieve number of commits of
 
     Returns:
         integer of the number of commits
     """
 
-    commit_url = "https://api.github.com/repos/{}/{}/commits?per_page=1&page=1".format(user,repo)
+    _url = "https://api.github.com/repos/{}/{}/commits?per_page=1&page=1"
+    commit_url = _url.format(user,repo)
+    if sha:
+        _url = _url + "&sha={}"
+        commit_url = _url.format(user,repo,sha)
     try:
         resp = send_get_req(_url=commit_url, _header=headers)[0]
         commits = resp.headers["link"].split(',')[1].split("=")[2][:-6]
+
+        if sha:
+            commits = resp.headers["link"].split(',')[1].split("=")[2][:-4]
     
         # retrieve and return the total number of commits
         return int(commits)
@@ -234,7 +261,7 @@ def retrieve_views_details(user, repo, headers) -> dict:
 
 
 
-def retrieve_repo_meta(resp_json, headers, user) -> dict:
+def retrieve_repo_meta(resp_json, headers, user, branch) -> dict:
     """
     Retrieves repo meta data from response json and returns a dictionary of the details
 
@@ -242,6 +269,7 @@ def retrieve_repo_meta(resp_json, headers, user) -> dict:
         resp_json(json): url to send the request to
         headers(dict): header to attach to the request
         user(str): github username
+        branch(str): name of branch to retrieve sha of
 
     Returns:
         dictionary of the details
@@ -255,8 +283,16 @@ def retrieve_repo_meta(resp_json, headers, user) -> dict:
         # Retrieve branches details
         dt[repo]["branches"] = retrieve_num_branches(user, repo, headers)
 
-        # Retrieve commit activity details
-        dt[repo]["total_commits"] = retrieve_num_commits(user, repo, headers)
+        # Retrieve branch sha
+        if branch:
+            branch_sha = retrieve_branch_sha(user, repo, headers, branch)
+
+            # Retrieve commit activity details
+            dt[repo]["total_commits"] = retrieve_num_commits(user, repo, headers, sha=branch_sha)
+
+        else:
+            # Retrieve commit activity details
+            dt[repo]["total_commits"] = retrieve_num_commits(user, repo, headers)
 
         # Retrieve contributors details
         dt[repo]["contributors"] = retrieve_contributors(user, repo, headers)
@@ -492,6 +528,23 @@ def clone_repo(clone_url, repo_path) -> tuple:
     return stderr, return_code
 
 
+def check_out_branch(branch_name) -> tuple:
+    """
+    Runs a sub process to checkout a branch given the branch name.
+    Returns the stderr and return code of the sub process.
+
+    Args:
+        branch_name(str): the name of the branch to checkout
+
+    Returns:
+        the stderr and return code of the sub process.
+    """
+    # run cmd process to clone repo
+    stdout, stderr, return_code = run_cmd_process(cmd_list = ["git", "checkout", branch_name])
+
+    return stderr, return_code
+
+
 def get_additions_and_save_contents(files, commit_sha):
     """
     Retrieves the additions added in a file between two given commits and saves the content of the changes made.
@@ -704,7 +757,7 @@ def convert_nb_to_py(path_list):
     return out_dict
 
 
-def run_to_get_adds_and_save_content(repo_name, repo_dict, file_ext, path="./") -> tuple:
+def run_to_get_adds_and_save_content(repo_name, repo_dict, file_ext, branch, path="./") -> tuple:
     """
     Abstract a processes involved from cloning and retrieving of commit shas to comparing changes that has occured between
     the first and current commits.
@@ -716,6 +769,7 @@ def run_to_get_adds_and_save_content(repo_name, repo_dict, file_ext, path="./") 
         path(str): path to the directory where search is to be done recursively, default = "./"
         file_ext(lst): file extention of files to look for with the "." included
                         example ".py"
+        branch(str): the branch to be used for the analysis
 
     Returns:
         A tuple of stderr, return_code of the cloning process, additions_dict and files
@@ -731,6 +785,10 @@ def run_to_get_adds_and_save_content(repo_name, repo_dict, file_ext, path="./") 
 
         # change working directory to cloned reository
         os.chdir(repo_path)
+
+        # checkout to branch
+        if branch:
+            stderr, return_code =  check_out_branch(branch_name=branch)
 
         # check for the existence of files with the given file extension
         exclude_list=[".git", ".ipynb_checkpoints", "__pycache__", "node_modules"]
