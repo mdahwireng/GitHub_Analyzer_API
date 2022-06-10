@@ -786,8 +786,11 @@ def run_to_get_adds_and_save_content(repo_name, repo_dict, file_ext, branch, pat
         # change working directory to cloned reository
         os.chdir(repo_path)
 
+        default_branch = None
+
         # checkout to branch
         if branch:
+            default_branch = get_git_branch()
             stderr, return_code =  check_out_branch(branch_name=branch)
 
         # check for the existence of files with the given file extension
@@ -812,7 +815,11 @@ def run_to_get_adds_and_save_content(repo_name, repo_dict, file_ext, branch, pat
         # rerieve language files
         files = retriev_files(file_ext=file_ext, path=path)
 
-        commit_sha = [retrieve_init_last_commit_sha(run_cmd_process(cmd_list=["git", "log", "--follow", tup[0]])[0])
+        if branch and default_branch != branch:
+            commit_sha = [retrieve_init_last_commit_sha(run_cmd_process(cmd_list=["git", "log", "{}..{}".format(default_branch,branch), "--follow", tup[0]])[0])
+                        for tup in files]
+        else:
+            commit_sha = [retrieve_init_last_commit_sha(run_cmd_process(cmd_list=["git", "log", "--follow", tup[0]])[0])
                         for tup in files]
 
         additions_dict = get_additions_and_save_contents(files, commit_sha)
@@ -1027,6 +1034,20 @@ def get_jsrepo_level_summary(files, file_level):
     return repo_summary
 
 
+def get_git_branch():
+    """
+    Returns the current git branch
+    """
+    #get branch name
+    stdout, stderr, return_code = run_cmd_process(cmd_list=['git', 'branch'])
+    if return_code == 0:
+        branch = [a for a in stdout.split('\n') if a.find('*') >= 0][0]
+        branch = branch.replace('*', '').strip()
+    else:
+        branch = None
+    return branch
+
+
 def get_recent_commit_stamp() -> dict:
     """
     Returns a dictionary of the most recent commit shas and the timestamp of the most recent commit
@@ -1044,11 +1065,8 @@ def get_recent_commit_stamp() -> dict:
             details = lines[0].split("/")
 
             #get branch name
-            stdout, stderr, return_code = run_cmd_process(cmd_list=['git', 'branch'])
-            if return_code == 0:
-                branch = [a for a in stdout.split('\n') if a.find('*') >= 0][0]
-                branch = branch.replace('*', '').strip()
-                return {"branch": branch, "commit_sha": details[0], "commit_ts": details[1], "author": details[2], "message": details[3]}
+            branch = get_git_branch()
+            return {"branch": branch, "commit_sha": details[0], "commit_ts": details[1], "author": details[2], "message": details[3]}
         else:
             return  {"branch": "", "commit_sha": "", "commit_stamp": "", "author": "", "message": ""}
     else:

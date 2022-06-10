@@ -189,8 +189,9 @@ if github_token and strapi_token:
         entry_made_into_analysis_table = False
 
 
-        for _, trainee_id, user, repo_name in github_df.itertuples():
+        for _, trainee_id, user, repo_name, branch in github_df.itertuples():
             print("Retrieving data for user: {} and repo: {}...".format(user, repo_name))
+            print("\n")
             hld = dict()
             if counter != 0 and counter%5 == 0:
                 print(user)
@@ -199,7 +200,7 @@ if github_token and strapi_token:
                 print("Resumed...\n")
 
             # get repo meta data and analysis data
-            repo_meta_repo_pyanalysis = get_repo_meta_pyanalysis(user, github_token, repo_name)
+            repo_meta_repo_pyanalysis = get_repo_meta_pyanalysis(user, github_token, repo_name, branch)
 
             hld["repo_meta"] = repo_meta_repo_pyanalysis["repo_meta"]
 
