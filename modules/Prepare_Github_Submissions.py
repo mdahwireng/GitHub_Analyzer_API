@@ -34,6 +34,8 @@ class PrepareGithubDf:
         if not isinstance(link, float) and len(link) > 0:
             if link.endswith(".git"):
                 link = link.replace(".git", "")
+            if link.endswith("/"):
+                link = link.replace("/", "")
             if link.__contains__("/tree/"):
                 return link.split("/")[4]
             return link.split("/")[-1]
