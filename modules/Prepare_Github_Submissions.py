@@ -19,18 +19,58 @@ class PrepareGithubDf:
         # Drop null values
         self.df.dropna(inplace=True)
     
-    def create_username_col(self):
-        self.df["gh_username"] = self.df[self.week].apply(lambda x:x.split("/")[-2] if not isinstance(x, float) and len(x) > 0 else None)
+    def get_username(self, link):
+        if not isinstance(link, float) and len(link) > 0:
+            if link.endswith(".git"):
+                link = link.replace(".git", "")
+            if link.__contains__("/tree/"):
+                return link.split("/")[3]
+            return link.split("/")[-2]
+        else:
+            return None
+
         
-    def create_repo_name_col(self):
-        self.df["repo_name"] = self.df[self.week].apply(lambda x:x.split("/")[-1] if not isinstance(x, float) and len(x) > 0 else None)
-    
+    def get_repo_name(self,link):
+        if not isinstance(link, float) and len(link) > 0:
+            if link.endswith(".git"):
+                link = link.replace(".git", "")
+            if link.endswith("/"):
+                link = link.replace("/", "")
+            if link.__contains__("/tree/"):
+                return link.split("/")[4]
+            return link.split("/")[-1]
+        else:
+            return None
+
+
+    def get_branch_name(self, link):
+        if not isinstance(link, float) and len(link) > 0:
+            if link.__contains__("/tree/"):
+                return link.split("/")[-1]
+            else:
+                return None
+        else:
+            return None
+
+
     def get_df(self,filename=None):
         self.slice_week()
-        self.create_username_col()
-        self.create_repo_name_col()
+        
+        gh_usernames = []
+        gh_repo_names = []
+        gh_branch_names = []
+
+        for index, row in self.df.iterrows():
+            gh_usernames.append(self.get_username(row[self.week]))
+            gh_repo_names.append(self.get_repo_name(row[self.week]))
+            gh_branch_names.append(self.get_branch_name(row[self.week]))
+        
+        self.df["gh_username"] = gh_usernames
+        self.df["repo_name"] = gh_repo_names
+        self.df["branch_name"] = gh_branch_names
+
         self.df = self.df[self.df["gh_username"].notnull()]
-        self.df = self.df[["trainee_id", "gh_username", "repo_name"]]
+        self.df = self.df[["trainee_id", "gh_username", "repo_name", "branch_name"]]
         if filename:
             self.df.to_csv(filename, index=False)
         return self.df

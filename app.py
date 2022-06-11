@@ -229,8 +229,8 @@ def get_single_repo_pyanalysis(user, token, repo_name, api=True)->json:
         return {"error":resp.json()}
 
 
-@app.route('/single_repos_meta_single_repos_pyanalysis/<string:user>/<string:token>/<string:repo_name>',methods=["GET"])
-def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, api=True)->json:
+@app.route('/single_repos_meta_single_repos_pyanalysis/<string:user>/<string:token>/<string:repo_name>/<string:branch>',methods=["GET"])
+def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, branch, api=True)->json:
     """
     Takes username, github generated token and name of repo and returns json of details of python code analis in 
     repository
@@ -239,10 +239,14 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, api=True)-
         user(str): github account username
         token(str): github account token
         repo_name(str): github repository name
+        branch(str): github repository branch
 
     Returns:
         json of details of python code analysis in repository 
     """
+    if branch == " ":
+        branch = None
+
     # create authourization headers for get request
     headers = {"Authorization":"Bearer {}".format(token)}
     # send get request to github api
@@ -258,6 +262,8 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, api=True)-
         if len(resp_dict) > 0:
             repo_name = list(resp_dict.keys())[0]
             resp_dict[repo_name]["repo_name"] = repo_name
+            if branch:
+                resp_dict[repo_name]["html_url"] = resp_dict[repo_name]["html_url"] + "/tree/" + branch
 
         repo_details = [repo for repo in d["items"]]
         if len(repo_details) == 0:
@@ -279,6 +285,10 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, api=True)-
                     repo_name = list(resp_dict.keys())[0]
                     resp_dict[repo_name]["repo_name"] = repo_name
 
+                    if branch:
+                        resp_dict[repo_name]["html_url"] = resp_dict[repo_name]["html_url"] + "/tree/" + branch
+
+
                 
                 if len(repo_details) == 0:
                     if api:
@@ -289,14 +299,14 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, api=True)-
                     return jsonify({"repo_meta":{"error":"Not Found"}, "analysis_results":{"error":"Not Found"}}) 
                 return {"repo_meta":{"error":"Not Found"}, "analysis_results":{"error":"Not Found"}}
                 
-        dt = retrieve_repo_meta(resp_json=resp_dict, headers=headers, user=user)
+        dt = retrieve_repo_meta(resp_json=resp_dict, headers=headers, user=user, branch=branch)
 
         lang_list = ["Python", "Jupyter Notebook"]
     
         # check if the repo contains python files
         if  check_lang_exit(user=user, repo=repo_name, headers=headers, lang_list=lang_list):
 
-            stderr, return_code, additions_dict, files, file_check_results = run_to_get_adds_and_save_content(repo_name, repo_dict=repo_details[0], file_ext=[".py", ".ipynb"])
+            stderr, return_code, additions_dict, files, file_check_results = run_to_get_adds_and_save_content(repo_name, repo_dict=repo_details[0], file_ext=[".py", ".ipynb"], branch=branch)
 
             # Make languages dynamic with number of files of the language
             lang_files_pairing = {"Jupyter Notebook":"num_ipynb", "Python":"num_py", "JavaScript":"num_js"}

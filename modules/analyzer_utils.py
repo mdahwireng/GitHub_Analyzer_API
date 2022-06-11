@@ -461,7 +461,7 @@ def get_break_points(series, cat_list=[0.99, 0.9, 0.75, 0.5], reverse=False, _ad
 # get repo meta data and analysis data
             
 
-def get_repo_meta_pyanalysis(user, github_token, repo_name)->dict:
+def get_repo_meta_pyanalysis(user, github_token, repo_name, branch)->dict:
     """
     Gets the repo meta data and analysis data.
     Returns the repo meta data and analysis data.
@@ -474,7 +474,7 @@ def get_repo_meta_pyanalysis(user, github_token, repo_name)->dict:
     Returns:
         dict: The repo meta data and analysis data.
     """
-    repo_meta_repo_pyanalysis = single_repos_meta_single_repos_pyanalysis(user, github_token, repo_name, api=False)
+    repo_meta_repo_pyanalysis = single_repos_meta_single_repos_pyanalysis(user, github_token, repo_name, branch, api=False)
 
     hld = dict()
     try:
