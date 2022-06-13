@@ -7,6 +7,8 @@ import lizard
 from radon.complexity import cc_rank
 from radon.metrics import mi_rank
 
+from modules.Retrieve_Commit_History import Retrieve_Commit_History
+
 
 
 def send_get_req(_url, _header=None) -> tuple:
@@ -757,13 +759,14 @@ def convert_nb_to_py(path_list):
     return out_dict
 
 
-def run_to_get_adds_and_save_content(repo_name, repo_dict, file_ext, branch, path="./") -> tuple:
+def run_to_get_adds_and_save_content(user, repo_name, repo_dict, file_ext, branch, path="./") -> tuple:
     """
     Abstract a processes involved from cloning and retrieving of commit shas to comparing changes that has occured between
-    the first and current commits.
-    Returns a tuple of stderr, return_code of the cloning process, additions_dict and files
+    the first and current commits as well as retrieval of commit history on a given branch.
+    Returns a tuple of stderr, return_code of the cloning process, additions_dict, files, commit_history_dict.
 
     Args:
+        user(str): The user name of the github repository.
         repo_name(str): the name of the repository to be used for naming the directory
         repo_dict(dict): dictionary of metadata returned as a response to a request to get metadata on repositoy
         path(str): path to the directory where search is to be done recursively, default = "./"
@@ -788,10 +791,21 @@ def run_to_get_adds_and_save_content(repo_name, repo_dict, file_ext, branch, pat
 
         default_branch = None
 
+        github_dict = {"owner":user, "repo":repo_name}
+
         # checkout to branch
         if branch:
             default_branch = get_git_branch()
             stderr, return_code =  check_out_branch(branch_name=branch)
+
+            # retrive commit history
+            branch_dict = {"default":default_branch, "branch":branch}
+            ret_commit = Retrieve_Commit_History(github_dict=github_dict, branch_dict=branch_dict)
+        else:
+            # retrieve commit history
+            ret_commit = Retrieve_Commit_History(github_dict=github_dict)
+        
+        commit_history_dict = ret_commit.get_commit_history_and_contributors()
 
         # check for the existence of files with the given file extension
         exclude_list=[".git", ".ipynb_checkpoints", "__pycache__", "node_modules"]
@@ -824,10 +838,10 @@ def run_to_get_adds_and_save_content(repo_name, repo_dict, file_ext, branch, pat
 
         additions_dict = get_additions_and_save_contents(files, commit_sha)
 
-        return stderr, return_code, additions_dict, files, file_check_results
+        return stderr, return_code, additions_dict, files, file_check_results, commit_history_dict
 
     else:
-        return stderr, return_code, dict(), list(), dict()
+        return stderr, return_code, dict(), list(), dict(), dict()
 
 
 
