@@ -306,7 +306,7 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, branch, ap
         # check if the repo contains python files
         if  check_lang_exit(user=user, repo=repo_name, headers=headers, lang_list=lang_list):
 
-            stderr, return_code, additions_dict, files, file_check_results = run_to_get_adds_and_save_content(repo_name, repo_dict=repo_details[0], file_ext=[".py", ".ipynb"], branch=branch)
+            stderr, return_code, additions_dict, files, file_check_results, commit_history_dict = run_to_get_adds_and_save_content(user=user ,repo_name=repo_name, repo_dict=repo_details[0], file_ext=[".py", ".ipynb"], branch=branch)
 
             # Make languages dynamic with number of files of the language
             lang_files_pairing = {"Jupyter Notebook":"num_ipynb", "Python":"num_py", "JavaScript":"num_js"}
@@ -347,23 +347,23 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, branch, ap
                 shutil.rmtree("tmp/"+repo_name)
 
                 if api:
-                    return jsonify({"repo_meta":dt, "analysis_results":analysis_results})  
-                return {"repo_meta":dt, "analysis_results":analysis_results}
+                    return jsonify({"repo_meta":dt, "analysis_results":analysis_results, "commit_history":commit_history_dict})  
+                return {"repo_meta":dt, "analysis_results":analysis_results, "commit_history":commit_history_dict}
 
             else:
                 if api:
-                    return jsonify({"repo_meta":dt, "analysis_results":{"error" : stderr}})
-                return {"repo_meta":dt, "analysis_results":{"error" : stderr}}
+                    return jsonify({"repo_meta":dt, "analysis_results":{"error" : stderr}, "commit_history":{"error" : stderr}})
+                return {"repo_meta":dt, "analysis_results":{"error" : stderr}, "commit_history":{"error" : stderr}}
 
         else:
             if api:
-                return jsonify({"repo_meta":dt, "analysis_results":{"error":"repository does not contain {} files".format(lang_list)}})
-            return {"repo_meta":dt, "analysis_results":{"error":"repository does not contain {} files".format(lang_list)}}
+                return jsonify({"repo_meta":dt, "analysis_results":{"error":"repository does not contain {} files".format(lang_list)}, "commit_history":{"error":"repository does not contain {} files".format(lang_list)}})
+            return {"repo_meta":dt, "analysis_results":{"error":"repository does not contain {} files".format(lang_list)}, "commit_history":{"error":"repository does not contain {} files".format(lang_list)}}
 
     else:
         if api:
-            return jsonify({"repo_meta":{"error":resp.json()}, "analysis_results":{"error":"Not Found"}})
-        return {"repo_meta":{"error":resp.json()}, "analysis_results":{"error":"Not Found"}}
+            return jsonify({"repo_meta":{"error":resp.json()}, "analysis_results":{"error":"Not Found"}, "commit_history":{"error":"Not Found"}})
+        return {"repo_meta":{"error":resp.json()}, "analysis_results":{"error":"Not Found"}, "commit_history":{"error":"Not Found"}}
         
 
 
