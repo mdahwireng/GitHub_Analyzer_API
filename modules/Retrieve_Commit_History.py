@@ -74,7 +74,8 @@ class Retrieve_Commit_History:
 
         self.branch_dict = branch_dict
         self.n_commit_default_to_branch = None
-        self.merged = False       
+        self.merged = False 
+        self.html_link = None      
         if branch_dict:
             self.default_branch = self.branch_dict['default']
             self.branch = self.branch_dict['branch']
@@ -106,6 +107,9 @@ class Retrieve_Commit_History:
         if github_dict:
             self.owner = github_dict['owner']
             self.repo = github_dict['repo']
+
+            if self.branch:
+                self.html_link = "https://github.com/{}/{}/tree/{}".format(self.owner, self.repo, self.branch)
 
             if "token" in github_dict:
                 self.headers = {"Authorization":"Bearer {}".format(github_dict['token'])}
@@ -276,4 +280,4 @@ class Retrieve_Commit_History:
             else:
                 contribution_count = [ {"author":a, "total_commits":c, "total_additions":addition_deletion_dict[a]["additions"], "total_deletions":addition_deletion_dict[a]["deletions"]} for a,c in contribution_count.items()]
             
-        return {"commit_history": commit_history, "contribution_count": contribution_count, "num_commits_on _branch":len(commit_history), "num_commits_on_default_to_branch":self.n_commit_default_to_branch, "num_contributors":len(contribution_count)}
+        return {"commit_history": commit_history, "contribution_count": contribution_count, "num_commits_on _branch":len(commit_history), "num_commits_on_default_to_branch":self.n_commit_default_to_branch, "num_contributors":len(contribution_count), "branch":self.branch, "default_branch":self.default_branch, "repo_name":self.repo, "html_link":self.html_link}
