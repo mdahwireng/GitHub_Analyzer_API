@@ -759,7 +759,7 @@ def convert_nb_to_py(path_list):
     return out_dict
 
 
-def run_to_get_adds_and_save_content(user, repo_name, repo_dict, file_ext, branch, path="./") -> tuple:
+def run_to_get_adds_and_save_content(user, repo_name, repo_dict, file_ext, branch, token, path="./") -> tuple:
     """
     Abstract a processes involved from cloning and retrieving of commit shas to comparing changes that has occured between
     the first and current commits as well as retrieval of commit history on a given branch.
@@ -773,6 +773,7 @@ def run_to_get_adds_and_save_content(user, repo_name, repo_dict, file_ext, branc
         file_ext(lst): file extention of files to look for with the "." included
                         example ".py"
         branch(str): the branch to be used for the analysis
+        token(str): the github token to be used for the analysis
 
     Returns:
         A tuple of stderr, return_code of the cloning process, additions_dict and files
@@ -791,7 +792,7 @@ def run_to_get_adds_and_save_content(user, repo_name, repo_dict, file_ext, branc
 
         default_branch = None
 
-        github_dict = {"owner":user, "repo":repo_name}
+        github_dict = {"owner":user, "repo":repo_name, "token":token}
 
         # checkout to branch
         if branch:
@@ -1085,3 +1086,50 @@ def get_recent_commit_stamp() -> dict:
             return  {"branch": "", "commit_sha": "", "commit_stamp": "", "author": "", "message": ""}
     else:
         return {"error": stderr}
+
+
+def retrieve_commits(repo_dict, repo_name, user, branch, token) -> dict:
+    """
+    Retrieves the commits for a given repo and branch
+
+    Args:
+        user(str): The user name of the github repository.
+        repo_name(str): the name of the repository to be used for naming the directory
+        repo_dict(dict): dictionary of metadata returned as a response to a request to get metadata on repositoy
+        branch(str): the branch to be used for the analysis
+        token(str): the github token to be used for the analysis
+
+        Returns:
+            A dictionary of the commits for the given repo and branch
+    """
+    # dir for named repo
+    repo_path = create_repo_dir(repo_name)
+
+    # clone repo
+    stderr, return_code = clone_repo(repo_path=repo_path, clone_url=repo_dict["clone_url"])
+   
+    # if there is no error
+    if return_code == 0:
+
+        # change working directory to cloned reository
+        os.chdir(repo_path)
+
+        default_branch = None
+
+        github_dict = {"owner":user, "repo":repo_name, "token":token}
+
+        # checkout to branch
+        if branch:
+            default_branch = get_git_branch()
+            stderr, return_code =  check_out_branch(branch_name=branch)
+
+            # retrive commit history
+            branch_dict = {"default":default_branch, "branch":branch}
+            ret_commit = Retrieve_Commit_History(github_dict=github_dict, branch_dict=branch_dict)
+        else:
+            # retrieve commit history
+            ret_commit = Retrieve_Commit_History(github_dict=github_dict)
+        
+        commit_history_dict = ret_commit.get_commit_history_and_contributors()
+
+        return commit_history_dict
