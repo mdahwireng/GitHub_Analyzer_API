@@ -5,7 +5,7 @@ import time
 import os
 import sys
 
-from app import get_user, single_repos_meta_single_repos_pyanalysis
+from app import get_user, retrieve_commit_history, single_repos_meta_single_repos_pyanalysis
 
 github_token = None
 
@@ -459,8 +459,6 @@ def get_break_points(series, cat_list=[0.99, 0.9, 0.75, 0.5], reverse=False, _ad
 
 
 # get repo meta data and analysis data
-            
-
 def get_repo_meta_pyanalysis(user, github_token, repo_name, branch)->dict:
     """
     Gets the repo meta data and analysis data.
@@ -510,3 +508,23 @@ def normalize_repo_data(data_dict, starter_code_ref_basevalues)->dict:
              for k in data_dict
              }
     return _dict
+
+
+
+def get_commit_history(user, github_token, repo_name, branch)->dict:
+    """
+    Gets the commit history.
+    Returns the commit history.
+
+    Args:
+        user (str): The user.
+        github_token (str): The github token.
+        repo_name (str): The repo name.
+        branch (str): The branch.
+
+    Returns:
+        dict: The commit history.
+    """
+    commit_history = retrieve_commit_history(user, github_token, repo_name, branch, api=False)
+
+    return commit_history
