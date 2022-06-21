@@ -382,7 +382,7 @@ if github_token and strapi_token:
                     if starter_code_ref_basevalues:
                         # normalize the repo data
                         print("Normalizing repo_meta data...\n")
-                        repo_dict = normalize_repo_data(repo_dict, starter_code_ref_basevalues)
+                        repo_dict = normalize_repo_data(repo_meta_dict, starter_code_ref_basevalues)
 
                     #fill in the default values where necessary
                     repo_meta_dict = {col:(repo_meta_dict[col]
@@ -404,7 +404,7 @@ if github_token and strapi_token:
                         repo_meta_error_dict["user"].append(user)
                         repo_meta_error_dict["repo_name"].append(repo_name)
                         repo_meta_error_dict["error"].append(_r["error"])
-                        continue
+                        
                 
                 else:
                     print("Error creating entry in repo meta table...\n")
@@ -413,7 +413,7 @@ if github_token and strapi_token:
                     repo_meta_error_dict["user"].append(user)
                     repo_meta_error_dict["repo_name"].append(repo_name)
                     repo_meta_error_dict["error"].append("Repo meta already exists in repo meta table")
-                    continue
+                    
 
             else:
                 print("Error retrieving repo data for user: {} and repo: {}\n".format(user, repo_name))
@@ -820,33 +820,33 @@ if github_token and strapi_token:
                                 if "repo" not in rank_dict:
                                     rank_dict["repo"] = []
                                     
-                                    if row[col] not in trainee_repo_id_dict:
+                                if row[col] not in trainee_repo_id_dict:
 
-                                        pluralapi = "github-repo-metas"
-                                        q_url = "https://dev-cms.10academy.org/api/{}?filters[trainee_id][$eq]={}&filters[week][$eq]={}&filters[run_number][$eq]={}".format(pluralapi, row[col], week, run_number)
+                                    pluralapi = "github-repo-metas"
+                                    q_url = "https://dev-cms.10academy.org/api/{}?filters[trainee_id][$eq]={}&filters[week][$eq]={}&filters[run_number][$eq]={}".format(pluralapi, row[col], week, run_number)
+                                    r = get_table_data_strapi(q_url, token=strapi_token)
+
+                                    if "error" not in r[0]:
+                                        repo_lnk = r[0]["attributes"]["html_url"]
+                                        # retrieve repo_id from strapi
+                                        pluralapi = "repos"
+
+                                        q_url = "https://dev-cms.10academy.org/api/{}?filters[html_url][$eq]={}".format(pluralapi, repo_lnk)
                                         r = get_table_data_strapi(q_url, token=strapi_token)
 
-                                        if "error" not in r[0]:
-                                            repo_lnk = r[0]["attributes"]["html_url"]
-                                            # retrieve repo_id from strapi
-                                            pluralapi = "repos"
-
-                                            q_url = "https://dev-cms.10academy.org/api/{}?filters[html_url][$eq]={}".format(pluralapi, repo_lnk)
-                                            r = get_table_data_strapi(q_url, token=strapi_token)
-
-                                            
-                                            if "error" not in r[0]:
-                                                
-                                                trainee_repo_id_dict[row[col]] = r[0]["id"]
-                                                
-                                            else:
-                                                trainee_repo_id_dict[row[col]] = None
-                                                print("Error in retrieving repo realtion from repo table for for trainee {}".format(row[col]))
-                                                print("\n")
                                         
+                                        if "error" not in r[0]:
+                                            
+                                            trainee_repo_id_dict[row[col]] = r[0]["id"]
+                                            
                                         else:
                                             trainee_repo_id_dict[row[col]] = None
-                                            print("Error in retrieving repo link from repo metas table for trainee {}".format(row[col]))
+                                            print("Error in retrieving repo realtion from repo table for for trainee {}".format(row[col]))
+                                            print("\n")
+                                    
+                                    else:
+                                        trainee_repo_id_dict[row[col]] = None
+                                        print("Error in retrieving repo link from repo metas table for trainee {}".format(row[col]))
 
                                 
                                 repo_rel = trainee_repo_id_dict[row[col]]
