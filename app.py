@@ -307,7 +307,7 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, branch, ap
         # check if the repo contains python files
         if  check_lang_exit(user=user, repo=repo_name, headers=headers, lang_list=lang_list):
 
-            stderr, return_code, additions_dict, files, file_check_results, commit_history_dict = run_to_get_adds_and_save_content(user=user ,repo_name=repo_name, repo_dict=repo_details[0], file_ext=[".py", ".ipynb"], branch=branch)
+            stderr, return_code, additions_dict, files, file_check_results, commit_history_dict = run_to_get_adds_and_save_content(user=user ,repo_name=repo_name, repo_dict=repo_details[0], file_ext=[".py", ".ipynb"], branch=branch, token=token)
 
             # Make languages dynamic with number of files of the language
             lang_files_pairing = {"Jupyter Notebook":"num_ipynb", "Python":"num_py", "JavaScript":"num_js"}

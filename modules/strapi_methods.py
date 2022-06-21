@@ -35,14 +35,14 @@ def insert_data_strapi(data, pluralapi, url="https://dev-cms.10academy.org/api",
                         ).json()
         
         if "error" in r:
-            print("Error: {}".format(r["error"]))
+            return {"Error: {}".format(r["error"])}
         
         else:
             print("Data uploaded successfully into {}".format(pluralapi))
-            print(r["data"],"\n")
+            return {**r["data"]}
     
     except Exception as e:
-        print("Error: {}".format(e))
+        return {"Error: {}".format(e)}
 
 
 def update_data_strapi(data, pluralapi,entry_id, url="https://dev-cms.10academy.org/api", token=False)->None:
@@ -78,14 +78,14 @@ def update_data_strapi(data, pluralapi,entry_id, url="https://dev-cms.10academy.
                         ).json()
         
         if "error" in r:
-            print("Error: {}".format(r["error"]))
+            return {"Error: {}".format(r["error"])}
         
         else:
             print("Data updated successfully into {}".format(pluralapi))
-            print(r["data"],"\n")
+            return {**r["data"]}
     
     except Exception as e:
-        print("Error: {}".format(e))
+        return {"Error: {}".format(e)}
 
 
     
@@ -196,3 +196,66 @@ def upload_to_strapi(strapi_table_pairing, token=False)->None:
         df.replace("N/A", None, regex=True, inplace=True)
         for data in json.loads(df.to_json(orient="records")):
             insert_data_strapi(pluralapi=p_api, data=data, token=token)
+
+
+
+def get_assignment_data(week, batch, base_url, token):
+    """
+    Gets assignment data from assignment table
+    """
+
+    week = "week "+ week[4:]
+
+    q_query = """query getAssingmentCategroy($batch: Int!,$topic:String!) {
+    assignments(
+        pagination: { start: 0, limit: 300 }
+        filters: {
+        
+        assignment_category: { topic:{eq:$topic} batch: { Batch: { eq: $batch } } }
+        }
+    ) {
+        data {
+        id
+        attributes {
+            assignment_submission_content
+            gclass_submission_identifier
+            assignment_category{
+            data{
+                attributes{
+                name
+                topic
+                }
+            }
+            }
+            trainee {
+            data {
+                id
+                attributes {
+                email
+                trainee_id
+                }
+            }
+            }
+        }
+        }
+    }
+    }"""
+
+    q_variables = {"batch": batch, "topic": week}
+    
+
+    url = base_url+"/graphql?query={}&variables={}".format(q_query, json.dumps(q_variables))
+
+    #url = base_url+"/graphql?query={}".format(query)
+
+    if token:
+        headers = { "Authorization": "Bearer {}".format(token), "Content-Type": "application/json"}
+    else:
+        headers = {"Content-Type": "application/json"}
+
+    try:
+        resp, resp_status = send_get_req(url, headers)
+
+        return resp.json()
+    except Exception as e:
+        return {"error": e}

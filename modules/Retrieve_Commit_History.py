@@ -72,13 +72,18 @@ class Retrieve_Commit_History:
             github_dict (dict): The github details dictionary containing the username and the repository name. Default is None
         """
 
+        print("\nRetrieval of commit history initializing...\n")
         self.branch_dict = branch_dict
         self.n_commit_default_to_branch = None
         self.merged = False 
-        self.html_link = None      
+        self.html_link = None 
+
+        print("Retrieving commit logs...\n")
+
         if branch_dict:
             self.default_branch = self.branch_dict['default']
             self.branch = self.branch_dict['branch']
+
             if self.branch == self.default_branch:
                 self.log = run_cmd_process(cmd_list=["git", "log", '--pretty=format:**%H##%ct##%aN##%s', "--raw", "--stat"])[0]
                 self.n_commit_default_to_branch = len(self.log.split("**"))-1
@@ -99,6 +104,8 @@ class Retrieve_Commit_History:
         self.lines = self.log.split("**")
         self.headers = None
 
+        print("\nRetrieval of commit logs completed.\n")
+
         if not self.n_commit_default_to_branch:
             log = run_cmd_process(cmd_list=["git", "log", '--pretty=format:**%H##%ct##%aN##%s', "--raw", "--stat"])[0]
             self.n_commit_default_to_branch = len(log.split("**"))-1
@@ -113,6 +120,7 @@ class Retrieve_Commit_History:
 
             if "token" in github_dict:
                 self.headers = {"Authorization":"Bearer {}".format(github_dict['token'])}
+        print("\nRetrieval of commit history initialized.\n")
 
 
 
@@ -145,14 +153,21 @@ class Retrieve_Commit_History:
             A dictionary containing the files and the type of modification made to them
         """
 
-        change_status_d = {"M":"Modified", "A":"Created", "D":"Deleted", "R100":"Renamed"}
+        change_status_d = {"M":"Modified", "A":"Created", "D":"Deleted", "R":"Renamed"}
         files__ = {}
         for r in r_list:
             r_ll = r.split("\t")
-            change_status = change_status_d[r_ll[0].split(" ")[-1]]
+            status = r_ll[0].split(" ")[-1]
+            if status[0] == "R":
+                similarity_index = status[1:-1]
+                status = "R"
+            
+
+            change_status = change_status_d[status]
+
             if change_status == "Renamed":
                 file_n = r_ll[-2].strip()
-                files__[file_n] = {"change_status": change_status, "renamed_to":r_ll[-1].strip()}
+                files__[file_n] = {"change_status": change_status, "renamed_to":r_ll[-1].strip(), "similarity_index":similarity_index}
             else:
                 file_n = r_ll[-1]
                 files__[file_n] = {"change_status": change_status}
@@ -186,6 +201,8 @@ class Retrieve_Commit_History:
         Returns:
             A dictionary containing the commit history, contributors, number of commits and number of contributors
         """
+
+        print("Retriving commit history...")
 
         if self.owner and self.repo:
             author_git_user_dict = {}
@@ -247,7 +264,10 @@ class Retrieve_Commit_History:
                             
                             if ref_sc == 200:
                                 ref_json = ref_r.json()
-                                author_git_user_dict[author] = ref_json["author"]["login"]
+                                if ref_json["author"]:
+                                    author_git_user_dict[author] = ref_json["author"]["login"]
+                                else:
+                                    author_git_user_dict[author] = None
                             else:
                                 author_git_user_dict[author] = None
                             
@@ -279,5 +299,6 @@ class Retrieve_Commit_History:
                 contribution_count = [ {"author":a, "author_git_user":author_git_user_dict[a], "total_commits":c, "total_additions":addition_deletion_dict[a]["additions"], "total_deletions":addition_deletion_dict[a]["deletions"]} for a,c in contribution_count.items()]
             else:
                 contribution_count = [ {"author":a, "total_commits":c, "total_additions":addition_deletion_dict[a]["additions"], "total_deletions":addition_deletion_dict[a]["deletions"]} for a,c in contribution_count.items()]
-            
-        return {"commit_history": commit_history, "contribution_count": contribution_count, "num_commits_on _branch":len(commit_history), "num_commits_on_default_to_branch":self.n_commit_default_to_branch, "num_contributors":len(contribution_count), "branch":self.branch, "default_branch":self.default_branch, "repo_name":self.repo, "html_link":self.html_link}
+
+        print("\nCommit history retreival completed\n")   
+        return {"commit_history": commit_history, "contribution_counts": contribution_count, "commits_on_branch":len(commit_history), "commits_on_default_to_branch":self.n_commit_default_to_branch, "num_contributors":len(contribution_count), "branch":self.branch, "default_branch":self.default_branch, "repo_name":self.repo, "html_link":self.html_link}

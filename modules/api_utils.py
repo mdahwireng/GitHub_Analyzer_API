@@ -804,7 +804,9 @@ def run_to_get_adds_and_save_content(user, repo_name, repo_dict, file_ext, branc
             ret_commit = Retrieve_Commit_History(github_dict=github_dict, branch_dict=branch_dict)
         else:
             # retrieve commit history
-            ret_commit = Retrieve_Commit_History(github_dict=github_dict)
+            default_branch = get_git_branch()
+            branch_dict = {"default":default_branch, "branch":default_branch}
+            ret_commit = Retrieve_Commit_History(github_dict=github_dict, branch_dict=branch_dict)
         
         commit_history_dict = ret_commit.get_commit_history_and_contributors()
 
