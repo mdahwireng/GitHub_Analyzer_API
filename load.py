@@ -50,7 +50,7 @@ if github_token and strapi_token:
         print("\nThe state file does not exit and system will exit now...\n")
         sys.exit(1)
 
-    current_week = datetime.now().isocalendar()[1] - 3
+    current_week = datetime.now().isocalendar()[1] - 1
     training_week = current_week - 18
     
     week= "week{}".format(training_week)
@@ -165,7 +165,7 @@ if github_token and strapi_token:
         repo_meta_df_cols = ["repo_name","trainee_id",'branches', 'contributors', 'description', 'forks', 'html_url', 'languages', 'total_commits', 
                         "interested_files", "num_ipynb", "num_js", "num_py", "num_dirs", "num_files", "commit_stamp", "run_number"]
             
-        commit_history_df_cols = ["commit_history", "contribution_counts", "commits_on_branch", "commits_on_default_to_branch", "num_contributors", "branch", "default_branch", "repo_name", "html_link", "trainee_id", "file_level" "run_number"]
+        commit_history_df_cols = ["commit_history", "contribution_counts", "commits_on_branch", "commits_on_default_to_branch", "num_contributors", "branch", "default_branch", "repo_name", "html_link", "trainee_id", "file_level", "run_number"]
 
         
         
@@ -203,12 +203,12 @@ if github_token and strapi_token:
 
         # retrive user and repo data
         counter = 0
-        repo_table_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "error":[]}
-        assignment_table_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "error":[]}
-        user_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "error":[]}
-        repo_meta_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "error":[]}
-        commit_history_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "error":[]}
-        repo_metric_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "error":[]}
+        repo_table_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "branch":[], "error":[]}
+        assignment_table_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "branch":[], "error":[]}
+        user_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "branch":[], "error":[]}
+        repo_meta_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "branch":[], "error":[]}
+        commit_history_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "branch":[], "error":[]}
+        repo_metric_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "branch":[], "error":[]}
         entry_made_into_analysis_table = False
 
         trainee_repo_id_dict = {}
@@ -303,6 +303,7 @@ if github_token and strapi_token:
                         repo_table_error_dict["trainee_id"].append(trainee_id)
                         repo_table_error_dict["user"].append(user)
                         repo_table_error_dict["repo_name"].append(repo_name)
+                        repo_table_error_dict["branch"].append(branch)
                         repo_table_error_dict["error"].append(r["error"])
                         continue
                    
@@ -324,6 +325,7 @@ if github_token and strapi_token:
                                 assignment_table_error_dict["trainee_id"].append(trainee_id)
                                 assignment_table_error_dict["user"].append(user)
                                 assignment_table_error_dict["repo_name"].append(repo_name)
+                                assignment_table_error_dict["branch"].append(branch)
                                 assignment_table_error_dict["error"].append(r["error"])
                                 
                                 continue
@@ -345,7 +347,7 @@ if github_token and strapi_token:
                 
 
 
-                print("Repo data dict created\n")
+                print("Repo meta data dict created\n")
 
                 # check for entry in strapi
                 pluralapi = "github-repo-metas"
@@ -369,7 +371,7 @@ if github_token and strapi_token:
                 
 
                 # check if entry exists
-                r_filtered = [r_i for r_i in r if r_i["attributes"]["trainee_id"] == trainee_id and r_i["attributes"]["run_number"] == run_number]
+                r_filtered = [r_i for r_i in r if r_i["attributes"]["trainee_id"] == trainee_id and r_i["attributes"]["run_number"] == run_number and r_i["attributes"]["week"]== week]
                 if len(r_filtered) == 0:
                     print("Creating repo meta data dict...\n")
                     print("Entry does not exist in strapi...\n")
@@ -403,6 +405,7 @@ if github_token and strapi_token:
                         repo_meta_error_dict["trainee_id"].append(trainee_id)
                         repo_meta_error_dict["user"].append(user)
                         repo_meta_error_dict["repo_name"].append(repo_name)
+                        repo_meta_error_dict["branch"].append(branch)
                         repo_meta_error_dict["error"].append(_r["error"])
                         
                 
@@ -412,6 +415,7 @@ if github_token and strapi_token:
                     repo_meta_error_dict["trainee_id"].append(trainee_id)
                     repo_meta_error_dict["user"].append(user)
                     repo_meta_error_dict["repo_name"].append(repo_name)
+                    repo_meta_error_dict["branch"].append(branch)
                     repo_meta_error_dict["error"].append("Repo meta already exists in repo meta table")
                     
 
@@ -420,6 +424,7 @@ if github_token and strapi_token:
                 repo_meta_error_dict["trainee_id"].append(trainee_id)
                 repo_meta_error_dict["repo_name"].append(repo_name)
                 repo_meta_error_dict["user"].append(user)
+                repo_meta_error_dict["branch"].append(branch)
                 repo_meta_error_dict["error"].append(hld["repo_meta"])
             
 
@@ -454,7 +459,7 @@ if github_token and strapi_token:
                     continue"""
 
                 # check if entry exists
-                r_filtered = [r_i for r_i in r if r_i["attributes"]["trainee_id"] == trainee_id and r_i["attributes"]["run_number"] == run_number]
+                r_filtered = [r_i for r_i in r if r_i["attributes"]["trainee_id"] == trainee_id and r_i["attributes"]["run_number"] == run_number and r_i["attributes"]["week"]== week]
                 if len(r_filtered) == 0:
                     print("Creating user meta data dict...\n")
                     print("Entry does not exist in strapi...\n")
@@ -482,6 +487,7 @@ if github_token and strapi_token:
                         user_error_dict["trainee_id"].append(trainee_id)
                         user_error_dict["user"].append(user)
                         user_error_dict["repo_name"].append(repo_name)
+                        user_error_dict["branch"].append(branch)
                         user_error_dict["error"].append(_r["error"])
                       
 
@@ -491,6 +497,7 @@ if github_token and strapi_token:
                     user_error_dict["trainee_id"].append(trainee_id)
                     user_error_dict["user"].append(user)
                     user_error_dict["repo_name"].append(repo_name)
+                    user_error_dict["branch"].append(branch)
                     user_error_dict["error"].append("User meta already exists in user meta table")
                     
 
@@ -499,6 +506,7 @@ if github_token and strapi_token:
                 user_error_dict["trainee_id"].append(trainee_id)
                 user_error_dict["user"].append(user)
                 user_error_dict["repo_name"].append(repo_name)
+                user_error_dict["branch"].append(branch)
                 user_error_dict["error"].append(hld["user"])
 
 
@@ -532,7 +540,7 @@ if github_token and strapi_token:
                     continue"""
 
                 # check if entry exists
-                r_filtered = [r_i for r_i in r if r_i["attributes"]["trainee_id"] == trainee_id and r_i["attributes"]["run_number"] == run_number]
+                r_filtered = [r_i for r_i in r if r_i["attributes"]["trainee_id"] == trainee_id and r_i["attributes"]["run_number"] == run_number and r_i["attributes"]["week"]== week]
                 if len(r_filtered) == 0:
                     print("Creating repo commit history dict...\n")
                     print("Entry does not exist in strapi...\n")
@@ -559,6 +567,7 @@ if github_token and strapi_token:
                         commit_history_error_dict["trainee_id"].append(trainee_id)
                         commit_history_error_dict["user"].append(user)
                         commit_history_error_dict["repo_name"].append(repo_name)
+                        commit_history_error_dict["branch"].append(branch)
                         commit_history_error_dict["error"].append(_r["error"])
                         
 
@@ -568,6 +577,7 @@ if github_token and strapi_token:
                     commit_history_error_dict["trainee_id"].append(trainee_id)
                     commit_history_error_dict["user"].append(user)
                     commit_history_error_dict["repo_name"].append(repo_name)
+                    commit_history_error_dict["branch"].append(branch)
                     commit_history_error_dict["error"].append("Repo commit history already exists in repo commit history table")
                     
 
@@ -576,6 +586,7 @@ if github_token and strapi_token:
                 commit_history_error_dict["trainee_id"].append(trainee_id)
                 commit_history_error_dict["user"].append(user)
                 commit_history_error_dict["repo_name"].append(repo_name)
+                commit_history_error_dict["branch"].append(branch)
                 commit_history_error_dict["error"].append(hld["commit_history"])
 
         
@@ -610,7 +621,7 @@ if github_token and strapi_token:
                     continue"""
 
                 # check if entry exists
-                r_filtered = [r_i for r_i in r if r_i["attributes"]["trainee_id"] == trainee_id and r_i["attributes"]["run_number"] == run_number]
+                r_filtered = [r_i for r_i in r if r_i["attributes"]["trainee_id"] == trainee_id and r_i["attributes"]["run_number"] == run_number and r_i["attributes"]["week"]== week]
                 if len(r_filtered) == 0:
                     print("Creating repo analysis metrics dict...\n")
                     print("Entry does not exist in strapi...\n")
@@ -638,6 +649,7 @@ if github_token and strapi_token:
                         repo_metric_error_dict["trainee_id"].append(trainee_id)
                         repo_metric_error_dict["user"].append(user)
                         repo_metric_error_dict["repo_name"].append(repo_name)
+                        repo_metric_error_dict["branch"].append(branch)
                         repo_metric_error_dict["error"].append(_r["error"])
 
                 else:
@@ -646,6 +658,7 @@ if github_token and strapi_token:
                     repo_metric_error_dict["trainee_id"].append(trainee_id)
                     repo_metric_error_dict["user"].append(user)
                     repo_metric_error_dict["repo_name"].append(repo_name)
+                    repo_metric_error_dict["branch"].append(branch)
                     repo_metric_error_dict["error"].append("Repo analysis metrics already exists in repo analysis metrics table")
 
             else:
@@ -653,9 +666,10 @@ if github_token and strapi_token:
                 repo_metric_error_dict["trainee_id"].append(trainee_id)
                 repo_metric_error_dict["user"].append(user)
                 repo_metric_error_dict["repo_name"].append(repo_name)
+                repo_metric_error_dict["branch"].append(branch)
                 repo_metric_error_dict["error"].append(hld["repo_anlysis_metrics"])
 
-            break
+            
 
 
 
