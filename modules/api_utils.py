@@ -832,11 +832,14 @@ def run_to_get_adds_and_save_content(user, repo_name, repo_dict, file_ext, branc
         # rerieve language files
         files = retriev_files(file_ext=file_ext, path=path)
 
-        if branch and default_branch != branch:
-            commit_sha = [retrieve_init_last_commit_sha(run_cmd_process(cmd_list=["git", "log", "{}..{}".format(default_branch,branch), "--follow", tup[0]])[0])
-                        for tup in files]
-        else:
-            commit_sha = [retrieve_init_last_commit_sha(run_cmd_process(cmd_list=["git", "log", "--follow", tup[0]])[0])
+        # if branch and default_branch != branch:
+        #     commit_sha = [retrieve_init_last_commit_sha(run_cmd_process(cmd_list=["git", "log", "{}..{}".format(default_branch,branch), "--follow", tup[0]])[0])
+        #                 for tup in files]
+        # else:
+        #     commit_sha = [retrieve_init_last_commit_sha(run_cmd_process(cmd_list=["git", "log", "--follow", tup[0]])[0])
+        #                 for tup in files]
+
+        commit_sha = [retrieve_init_last_commit_sha(run_cmd_process(cmd_list=["git", "log", "--follow", tup[0]])[0])
                         for tup in files]
 
         additions_dict = get_additions_and_save_contents(files, commit_sha)
