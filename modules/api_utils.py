@@ -969,7 +969,7 @@ def get_file_level_summary(analysis_results, additions_dict):
     
     
     for f in additions_dict:
-        if f not in file_level.keys():
+        if f[2:] not in file_level.keys():
             file_level[f] = dict()
             file_level[f]["additions"] = additions_dict[f]
             file_level[f]["cc"] = None
@@ -986,6 +986,22 @@ def get_file_level_summary(analysis_results, additions_dict):
             file_level[f].update(halstead)
     
     return file_level
+
+
+def get_filtered_file_level(file_paths, file_level_analysis) -> list:
+    """
+    Filters the file level analysis results to only include the files in the file_paths list
+
+    Args:
+        file_paths (list): A list of file paths to be included in the filtered results
+        file_level_analysis (dict): The file level analysis results
+
+    Returns:
+        A list of dictionaries of filtered file level analysis results
+    """
+    fltd = [{"name":k, **v} for k,v in file_level_analysis.items() if k in file_paths]
+    return fltd
+
 
 
 
