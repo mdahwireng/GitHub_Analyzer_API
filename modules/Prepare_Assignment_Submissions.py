@@ -9,11 +9,19 @@ class PrepareAssignmentDf:
         self.link_col = link_col
         
 
+    def clean_link(self, link):
+        # remove trailing foward slash and .git
+        if not isinstance(link, float) and len(link) > 0:
+            if link.endswith(".git"):
+                link = link[:-4]
+            if link.endswith("/"):
+                link = link[:-1]
+            
+        return link
+
     
     def get_username(self, link):
         if not isinstance(link, float) and len(link) > 0:
-            if link.endswith(".git"):
-                link = link.replace(".git", "")
             if link.__contains__("/tree/"):
                 return link.split("/")[3]
             return link.split("/")[-2]
@@ -23,10 +31,6 @@ class PrepareAssignmentDf:
         
     def get_repo_name(self,link):
         if not isinstance(link, float) and len(link) > 0:
-            if link.endswith(".git"):
-                link = link.replace(".git", "")
-            if link.endswith("/"):
-                link = link.replace("/", "")
             if link.__contains__("/tree/"):
                 return link.split("/")[4]
             return link.split("/")[-1]
@@ -51,9 +55,10 @@ class PrepareAssignmentDf:
         gh_branch_names = []
 
         for index, row in self.df.iterrows():
-            gh_usernames.append(self.get_username(row[self.link_col]))
-            gh_repo_names.append(self.get_repo_name(row[self.link_col]))
-            gh_branch_names.append(self.get_branch_name(row[self.link_col]))
+            link = self.clean_link(row[self.link_col])
+            gh_usernames.append(self.get_username(link))
+            gh_repo_names.append(self.get_repo_name(link))
+            gh_branch_names.append(self.get_branch_name(link))
         
         self.df["gh_username"] = gh_usernames
         self.df["repo_name"] = gh_repo_names
