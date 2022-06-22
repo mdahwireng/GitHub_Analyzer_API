@@ -141,7 +141,7 @@ if github_token and strapi_token:
 
 
         # set needed variables
-        repo_df_cols = ["repo_name", "html_url", "week"]
+        repo_df_cols = ["html_url", "week"]
 
         metrics_list = ["additions","avg_lines_per_class","avg_lines_per_function","avg_lines_per_method",
                         "cc","difficulty",'effort','lloc','loc','mi','num_classes','num_functions','num_methods',
@@ -165,13 +165,13 @@ if github_token and strapi_token:
         repo_meta_df_cols = ["repo_name","trainee_id",'branches', 'contributors', 'description', 'forks', 'html_url', 'languages', 'total_commits', 
                         "interested_files", "num_ipynb", "num_js", "num_py", "num_dirs", "num_files", "commit_stamp", "run_number"]
             
-        commit_history_df_cols = ["commit_history", "contribution_counts", "commits_on_branch", "commits_on_default_to_branch", "num_contributors", "branch", "default_branch", "repo_name", "html_link", "trainee_id", "week", "run_number"]
+        commit_history_df_cols = ["commit_history", "contribution_counts", "commits_on_branch", "commits_on_default_to_branch", "num_contributors", "branch", "default_branch", "repo_name", "html_link", "trainee_id", "file_level" "run_number"]
 
         
         
         # set default values
 
-        repo_df_cols_default = {"repo_name": "", "html_url": ""}
+        repo_df_cols_default = {"html_url": ""}
 
         user_df_cols_default = {"trainee_id":"",'avatar_url':"", 'bio':"", 'commits':-999, 'email':"", 'followers':-999, 'following':-999, 'html_url':"", 
                         'issues':-999, 'name':"", 'public_repos':-999, 'pull_requests':-999, "run_number":-999}
@@ -186,7 +186,7 @@ if github_token and strapi_token:
                                 'mi_rank':"", 'multi':-999, 'num_classes':-999, 'num_functions':-999, 'num_methods':-999, 'single_comments':-999,
                                 'sloc':-999, 'time':-999.0, "run_number":-999}
         
-        commit_history_df_cols_default = {"commit_history":[], "contribution_counts":[], "commits_on_branch":-999, "commits_on_default_to_branch":-999, "num_contributors":-999, "branch":"", "default_branch":"", "repo_name":"", "html_link":"", "trainee_id":"", "week":"", "run_number":-999}
+        commit_history_df_cols_default = {"commit_history":[], "contribution_counts":[], "commits_on_branch":-999, "commits_on_default_to_branch":-999, "num_contributors":-999, "branch":"", "default_branch":"", "repo_name":"", "html_link":"", "trainee_id":"", "file_level":[], "run_number":-999}
         
 
 
