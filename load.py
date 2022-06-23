@@ -50,7 +50,7 @@ if github_token and strapi_token:
         print("\nThe state file does not exit and system will exit now...\n")
         sys.exit(1)
 
-    current_week = datetime.now().isocalendar()[1] - 1
+    current_week = datetime.now().isocalendar()[1] - 6
     training_week = current_week - 18
     
     week= "week{}".format(training_week)
@@ -681,8 +681,9 @@ if github_token and strapi_token:
         #save error dicts to csv files
 
         ###############################################################################################
-
-        output_dir = "data/run_errors"
+        
+        now = datetime.now()
+        output_dir = "data/run_errors" + now.strftime("%Y-%m-%d_%H-%M-%S")
 
         
         
@@ -695,7 +696,7 @@ if github_token and strapi_token:
             if not os.path.isdir(output_dir):
                 os.makedirs(output_dir)
 
-            now = datetime.now()
+            
             user_error_df.to_csv("{}/b{}_{}_trainees_with_github_user_analysis_error_{}.csv".format(output_dir, batch, week, now.strftime("%Y_%m_%d__%H_%M_%S")), index=False)
 
         
