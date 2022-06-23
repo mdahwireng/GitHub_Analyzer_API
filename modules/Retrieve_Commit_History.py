@@ -277,28 +277,47 @@ class Retrieve_Commit_History:
                             github_username = author_git_user_dict[author]
                     
                     else:
-                        github_username = None
+                        github_username = "unknown"
 
                     commit_dict = {"commit_sha":commit_sha,"commit_ts":commit_ts, "author":author, "author_git_user":github_username, "message":message, "files":raw_dict}
                     
                     commit_history.append(commit_dict)
 
-        
-            contributor_list = [c["author"] for c in commit_history]
-            contribution_count = dict(Counter(contributor_list))
-
-            addition_deletion_dict = {author:{"additions":0, "deletions":0} for author in contribution_count.keys()}
-            for c in commit_history:
-                for f in c["files"]:
-                    if "additions" in f["details"].keys():
-                        addition_deletion_dict[c["author"]]["additions"] += f["details"]["additions"]
-                    if "deletions" in f["details"].keys():
-                        addition_deletion_dict[c["author"]]["deletions"] += f["details"]["deletions"]
-
             if self.owner and self.repo:
-                contribution_count = [ {"author":a, "author_git_user":author_git_user_dict[a], "total_commits":c, "total_additions":addition_deletion_dict[a]["additions"], "total_deletions":addition_deletion_dict[a]["deletions"]} for a,c in contribution_count.items()]
+                contributor_list = [c["author_git_user"] for c in commit_history]
+                contribution_count = dict(Counter(contributor_list))
+
+
+                addition_deletion_dict = {author_git_user:{"additions":0, "deletions":0, "author":[]} for author_git_user in contribution_count.keys()}
+                for c in commit_history:
+                    for f in c["files"]:
+                        if "additions" in f["details"].keys():
+                            addition_deletion_dict[c["author_git_user"]]["additions"] += f["details"]["additions"]
+                            
+                        if "deletions" in f["details"].keys():
+                            addition_deletion_dict[c["author_git_user"]]["deletions"] += f["details"]["deletions"]
+                        
+                        addition_deletion_dict[c["author_git_user"]]["author"].append(c["author"])
+                
+                contribution_count = [ {"author_git_user":a, "author":list(set(addition_deletion_dict[a]["author"])),  "total_commits":c, "total_additions":addition_deletion_dict[a]["additions"], "total_deletions":addition_deletion_dict[a]["deletions"]} for a,c in contribution_count.items()]
+            
+            
+            
             else:
+                contributor_list = [c["author"] for c in commit_history]
+                contribution_count = dict(Counter(contributor_list))
+
+                addition_deletion_dict = {author:{"additions":0, "deletions":0} for author in contribution_count.keys()}
+                for c in commit_history:
+                    for f in c["files"]:
+                        if "additions" in f["details"].keys():
+                            addition_deletion_dict[c["author"]]["additions"] += f["details"]["additions"]
+                        if "deletions" in f["details"].keys():
+                            addition_deletion_dict[c["author"]]["deletions"] += f["details"]["deletions"]
+                
                 contribution_count = [ {"author":a, "total_commits":c, "total_additions":addition_deletion_dict[a]["additions"], "total_deletions":addition_deletion_dict[a]["deletions"]} for a,c in contribution_count.items()]
+               
+
 
         print("\nCommit history retreival completed\n")   
         return {"commit_history": commit_history, "contribution_counts": contribution_count, "commits_on_branch":len(commit_history), "commits_on_default_to_branch":self.n_commit_default_to_branch, "num_contributors":len(contribution_count), "branch":self.branch, "default_branch":self.default_branch, "repo_name":self.repo, "html_link":self.html_link}
