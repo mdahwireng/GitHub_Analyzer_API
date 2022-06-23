@@ -375,10 +375,10 @@ def retriev_files(path, file_ext) -> list:
     """
     r_list = [(os.path.join(root, fn), os.path.join(root, "changed_"+fn)) 
             for root, _, files in os.walk(path, topdown=False) 
-            if not root.startswith("__") and not root.startswith("..") 
+            if not root.startswith("__") and not root.startswith("..")
             for fn in files for ext in file_ext if fn.endswith(ext)]
 
-    filter_list = ["lib","bin","etc", "include", "share", "var", "lib64", "venv"]
+    filter_list = ["lib","bin","etc", "include", "share", "var", "lib64", "venv", ".ipynb_checkpoints"]
     take_out = []
     for root in filter_list:
         for tup in r_list:
@@ -763,7 +763,7 @@ def run_to_get_adds_and_save_content(user, repo_name, repo_dict, file_ext, branc
     """
     Abstract a processes involved from cloning and retrieving of commit shas to comparing changes that has occured between
     the first and current commits as well as retrieval of commit history on a given branch.
-    Returns a tuple of stderr, return_code of the cloning process, additions_dict, files, commit_history_dict.
+    Returns a tuple of stderr, return_code of the cloning process, additions_dict, files, file_check_results, commit_history_dict, converted_nbs
 
     Args:
         user(str): The user name of the github repository.
@@ -821,16 +821,19 @@ def run_to_get_adds_and_save_content(user, repo_name, repo_dict, file_ext, branc
         # retrieve jupyter notebook paths
         nb_paths_list = [tup[0] for tup in retriev_files(path=path, file_ext=[".ipynb"])]
 
+        converted_nbs = []
+
         # convert jupyter notebook to python scripts
         if file_check_results["num_ipynb"] > 0:
             print("Converting notebooks to python scripts...")
-            _cnvt = convert_nb_to_py(path_list=nb_paths_list)
+            converted_nbs = convert_nb_to_py(path_list=nb_paths_list)["success"]
         
         #run_cmd_process(cmd_list=["git", "add", "*"])
         #run_cmd_process(cmd_list=["git", "commit", "-m", "converted jupyter notebooks to python scripts"])
 
         # rerieve language files
         files = retriev_files(file_ext=file_ext, path=path)
+        
 
         # if branch and default_branch != branch:
         #     commit_sha = [retrieve_init_last_commit_sha(run_cmd_process(cmd_list=["git", "log", "{}..{}".format(default_branch,branch), "--follow", tup[0]])[0])
@@ -844,10 +847,10 @@ def run_to_get_adds_and_save_content(user, repo_name, repo_dict, file_ext, branc
 
         additions_dict = get_additions_and_save_contents(files, commit_sha)
 
-        return stderr, return_code, additions_dict, files, file_check_results, commit_history_dict
+        return stderr, return_code, additions_dict, files, file_check_results, commit_history_dict, converted_nbs
 
     else:
-        return stderr, return_code, dict(), list(), dict(), dict()
+        return stderr, return_code, dict(), list(), dict(), dict(), list()
 
 
 
@@ -988,18 +991,32 @@ def get_file_level_summary(analysis_results, additions_dict):
     return file_level
 
 
-def get_filtered_file_level(file_paths, file_level_analysis) -> list:
+def get_filtered_file_level(file_paths, converted_nbs, file_level_analysis) -> list:
     """
     Filters the file level analysis results to only include the files in the file_paths list
 
     Args:
         file_paths (list): A list of file paths to be included in the filtered results
+        converted_nbs (list): A list of file paths to converted notebook files
         file_level_analysis (dict): The file level analysis results
 
     Returns:
         A list of dictionaries of filtered file level analysis results
     """
-    fltd = [{"name":k, **v} for k,v in file_level_analysis.items() if k in file_paths]
+    fltd = []
+    for f in file_paths:
+        files_dict = {}
+        f_nb = f.split(".")[0] + ".ipynb"
+        if f in file_level_analysis.keys():
+            if "./" + f_nb in converted_nbs:
+                f_name = f_nb
+            else:
+                f_name = f
+        
+            files_dict["file_name"] = f_name
+            files_dict.update(file_level_analysis[f])
+            fltd.append(files_dict)
+        
     return fltd
 
 
