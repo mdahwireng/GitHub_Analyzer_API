@@ -6,6 +6,7 @@ import os
 import sys
 
 from app import get_user, retrieve_commit_history, single_repos_meta_single_repos_pyanalysis
+from modules.graphql import GraphQLClient
 
 github_token = None
 
@@ -530,3 +531,36 @@ def get_commit_history(user, github_token, repo_name, branch)->dict:
     commit_history = retrieve_commit_history(user, github_token, repo_name, branch, api=False)
 
     return commit_history
+
+
+
+
+
+
+def send_graphql_query(client_url, query, variables=None, token=None)->dict:
+    """
+    Sends the graphql query.
+    Returns the response.
+
+    Args:
+        client_url (str): The client url.
+        query (str): The query.
+        variables (dict): The variables.
+        token (str): The authorization token.
+
+    Returns:
+        dict: The response.
+    """
+    token = "Bearer " + token if token else None
+    try:
+        client = GraphQLClient(client_url)
+        if token:
+            client.inject_token(token)
+
+        resp = client.execute(query, variables=variables)
+
+        return resp
+    
+    except Exception as e:
+        
+        return {"error": repr(e)}
