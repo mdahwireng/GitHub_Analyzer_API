@@ -1021,6 +1021,59 @@ def get_filtered_file_level(file_paths, converted_nbs, file_level_analysis) -> l
 
 
 
+def categorize_file_level_metrics(file_level_analysis, important_metrics_list):
+    """
+    Categorizes the file level analysis results into important and other metrics
+
+    Args:
+        file_level_analysis (dict): The file level analysis results
+        important_metrics_list (list): A list of important metrics
+
+    Returns:
+        A list of dictionaries of categorized file level analysis results
+    """
+    categorized = []
+    for dict in file_level_analysis:
+        files_dict = {"file_name": dict["file_name"]}
+        metrics = list(dict.keys())
+        metrics.remove("file_name")
+        
+        files_dict["important_metrics"] = {}
+        files_dict["other_metrics"] = {}
+        
+        for m,v in dict.items():
+            
+            if m in metrics:
+                if  m in important_metrics_list:
+                        files_dict["important_metrics"][m] = v
+                else:
+                    files_dict["other_metrics"][m] = v
+        categorized.append(files_dict)
+    
+    return categorized
+
+
+
+def get_categorized_file_level(file_paths, converted_nbs, file_level_analysis, important_metrics_list=["loc", "num_functions", "num_classes", "num_methods"]) -> list:
+    """
+    Categorizes the file level analysis results into important and other metrics
+
+    Args:
+        file_paths (list): A list of file paths to be included in the filtered results
+        converted_nbs (list): A list of file paths to converted notebook files
+        file_level_analysis (dict): The file level analysis results
+        important_metrics_list (list): A list of important metrics, default is ["loc", "num_functions", "num_classes", "num_methods"]
+
+    Returns:
+        A list of dictionaries of categorized file level analysis results
+    """
+    fltd = get_filtered_file_level(file_paths, converted_nbs, file_level_analysis)
+    categorized = categorize_file_level_metrics(fltd, important_metrics_list)
+    return categorized
+
+
+
+
 
 def get_js_cc_summary(analysis_results, cc_key):
     return  {

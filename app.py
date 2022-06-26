@@ -11,7 +11,7 @@ cpath = os.path.dirname(curdir)
 if not cpath in sys.path:
     sys.path.append(cpath)
 
-from modules.api_utils import add_js_additions, check_lang_exit, get_cc_summary, get_file_level_summary, get_filtered_file_level, get_js_cc_summary, get_jsrepo_level_summary, get_recent_commit_stamp, get_repo_level_summary, retrieve_commits, retrieve_repo_meta, run_jsanalysis, run_pyanalysis, run_to_get_adds_and_save_content, send_get_req
+from modules.api_utils import add_js_additions, check_lang_exit, get_categorized_file_level, get_cc_summary, get_file_level_summary, get_filtered_file_level, get_js_cc_summary, get_jsrepo_level_summary, get_recent_commit_stamp, get_repo_level_summary, retrieve_commits, retrieve_repo_meta, run_jsanalysis, run_pyanalysis, run_to_get_adds_and_save_content, send_get_req
 
 
 app = Flask(__name__)
@@ -344,7 +344,7 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, branch, ap
                 analysis_results["repo_summary"] = get_repo_level_summary(files, analysis_results["file_level"])
                 # get filtered file level changes
                 file_paths = [tup[0][2:] for tup in files]
-                commit_history_dict["file_level"] = get_filtered_file_level(file_paths=file_paths, file_level_analysis=analysis_results["file_level"], converted_nbs=converted_nbs)
+                commit_history_dict["file_level"] = get_categorized_file_level(file_paths=file_paths, file_level_analysis=analysis_results["file_level"], converted_nbs=converted_nbs)
                 
                 # delete repository directory after checking code metrics
                 os.chdir("../../")
