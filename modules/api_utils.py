@@ -1038,16 +1038,17 @@ def categorize_file_level_metrics(file_level_analysis, important_metrics_list):
         metrics = list(dict.keys())
         metrics.remove("file_name")
         
-        files_dict["important_metrics"] = {}
-        files_dict["other_metrics"] = {}
+        files_dict["important_metrics"] = []
+        files_dict["other_metrics"] = []
         
         for m,v in dict.items():
             
             if m in metrics:
                 if  m in important_metrics_list:
-                        files_dict["important_metrics"][m] = v
+
+                        files_dict["important_metrics"].append({"name": m, "value": v})
                 else:
-                    files_dict["other_metrics"][m] = v
+                    files_dict["other_metrics"].append({"name": m, "value": v})
         categorized.append(files_dict)
     
     return categorized
