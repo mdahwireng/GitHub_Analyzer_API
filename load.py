@@ -1,4 +1,5 @@
 from datetime import datetime
+from http import client
 import time
 import json
 import os
@@ -10,19 +11,21 @@ import numpy as np
 from app import get_user
 from modules.Prepare_Assignment_Submissions import PrepareAssignmentDf
 from modules.Treat_Assignment_Response import Get_Assignment_Data
+from modules.api_utils import send_get_req
 
 
-curdir = os.path.dirname(os.path.realpath(__file__))
+"""curdir = os.path.dirname(os.path.realpath(__file__))
 cpath = os.path.dirname(curdir)
 if not cpath in sys.path:
-    sys.path.append(cpath)
+    sys.path.append(cpath)"""
 
 
 
 from modules.strapi_methods import get_table_data_strapi, get_trainee_data, insert_data_strapi, update_data_strapi   
-from modules.analyzer_utils import get_break_points, get_id_userid_df, get_metric_category, get_metric_summary_dict, get_repo_meta_pyanalysis,normalize_repo_data
+from modules.analyzer_utils import get_break_points, get_id_userid_df, get_metric_category, get_metric_summary_dict, get_repo_meta_pyanalysis,normalize_repo_data, send_graphql_query
 from modules.gdrive import gsheet
 from modules.Prepare_Github_Submissions import PrepareGithubDf
+
 
 if os.path.exists(".env/secret.json"):
     with open(".env/secret.json", "r") as s:
@@ -50,7 +53,7 @@ if github_token and strapi_token:
         print("\nThe state file does not exit and system will exit now...\n")
         sys.exit(1)
 
-    current_week = datetime.now().isocalendar()[1] - 6
+    current_week = datetime.now().isocalendar()[1] - 3
     training_week = current_week - 18
     
     week= "week{}".format(training_week)
@@ -58,6 +61,8 @@ if github_token and strapi_token:
     run_number = state_dict["run_number"]
 
     base_url = "https://dev-cms.10academy.org"
+
+    client_url = base_url + "/graphql"
     
     assgn = Get_Assignment_Data(week, batch, base_url, strapi_token)
 
@@ -141,7 +146,7 @@ if github_token and strapi_token:
 
 
         # set needed variables
-        repo_df_cols = ["html_url", "week"]
+        repo_df_cols = ["html_url", "week", "run_number"]
 
         metrics_list = ["additions","avg_lines_per_class","avg_lines_per_function","avg_lines_per_method",
                         "cc","difficulty",'effort','lloc','loc','mi','num_classes','num_functions','num_methods',
@@ -171,7 +176,7 @@ if github_token and strapi_token:
         
         # set default values
 
-        repo_df_cols_default = {"html_url": ""}
+        repo_df_cols_default = {"html_url": "", "run_number":-999}
 
         user_df_cols_default = {"trainee_id":"",'avatar_url':"", 'bio':"", 'commits':-999, 'email':"", 'followers':-999, 'following':-999, 'html_url':"", 
                         'issues':-999, 'name':"", 'public_repos':-999, 'pull_requests':-999, "run_number":-999}
@@ -204,7 +209,7 @@ if github_token and strapi_token:
         # retrive user and repo data
         counter = 0
         repo_table_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "branch":[], "error":[]}
-        assignment_table_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "branch":[], "error":[]}
+        assignment_table_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "branch":[], "assignment_id":[], "error":[]}
         user_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "branch":[], "error":[]}
         repo_meta_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "branch":[], "error":[]}
         commit_history_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "branch":[], "error":[]}
@@ -212,6 +217,9 @@ if github_token and strapi_token:
         entry_made_into_analysis_table = False
 
         trainee_repo_id_dict = {}
+
+        github_df["trainee"] = github_df.trainee.astype(int)
+        github_df["run_number"] = github_df.run_number.astype(int)
 
 
         for i, row in github_df.iterrows():
@@ -270,6 +278,8 @@ if github_token and strapi_token:
                     if col in _dict[trainee_id]["repo_meta"].keys() else None)  for col in repo_df_cols}
 
                 repo_table_dict["week"] = week
+                repo_table_dict["trainees"] = trainee
+                repo_table_dict["run_number"] = run_number
 
                 #fill in the default values where necessary
                 """repo_table_dict = {col:(repo_dict[col]
@@ -280,64 +290,204 @@ if github_token and strapi_token:
                 print("Repo table data dict created...\n")
 
                 #check if the entry already exists in the repo table
-                pluralapi = "repos"
-                q_url = "https://dev-cms.10academy.org/api/{}?filters[html_url][$eq]={}".format(pluralapi, repo_table_dict["html_url"])
+                
 
-                r = get_table_data_strapi(q_url, token=strapi_token)
-
-                #if the entry already exist retrieve the id
-
-                if len(r) > 0:
-                    repo_id = r[0]["id"]
-                    print("Repo already exists in repo table...\n")
-                else:
-                    print("Repo does not exist in repo table...\n")
-                    #create a new entry in the repo table
-                    print("Creating new entry in repo table...\n")
-
-                    r = insert_data_strapi(data=repo_table_dict, token=strapi_token, pluralapi=pluralapi)
+                q_query = """query getRepoDetails($html_link: String!,$run_number:Int!) 
+                {
+                    repos
+                        (
+                            pagination: { start: 0, limit: 300 }
+                            filters: 
+                            {
+                             html_url:{eq:$html_link}, 
+                             run_number:{ eq: $run_number }
+                            }
+                        ) 
+                        {
+                            data 
+                            {
+                                id
+                                attributes
+                                {
+                                    trainees 
+                                        {
+                                            data 
+                                                {
+                                                    id
+                                                }
+                                        }
+                                }
+                            }
+                        }
                     
-                    if "error" in r:
-                        print("Error creating entry in repo table...\n")
+                }"""
+
+                q_variables = {"html_link": repo_table_dict["html_url"], "run_number": run_number}
+                
+                r = send_graphql_query(client_url = client_url, query = q_query, variables= q_variables, token=strapi_token)
+
+    
+                if "error" not in r and "erros" not in r:
+                    num_entries = len(r["data"]["repos"]["data"])
+                    if num_entries > 0:
+                        print("Repo already exists in repo table...\n")
+
+                        if num_entries > 1:
+                            print("More than one entry found for a particular repo in repo table...\n")
+                            print("Data intergrity breach, please check...\n")
+                            print("System will now exit...\n")
+                            sys.exit(1)
                         
-                        repo_table_error_dict["trainee_id"].append(trainee_id)
-                        repo_table_error_dict["user"].append(user)
-                        repo_table_error_dict["repo_name"].append(repo_name)
-                        repo_table_error_dict["branch"].append(branch)
-                        repo_table_error_dict["error"].append(r["error"])
-                        continue
-                   
-                    else:
-                        repo_id = r["id"]
-                        print("New entry created in repo table...\n")
 
-                        #update assignment table with the new repo id
-                        print("Updating assignment table with new repo id...\n")
-                        pluralapi = "assignments"
-                        data = {"repo":repo_id}
+                        repo_id = r["data"]["repos"]["data"][0]["id"]
+                        existing_trainees_resp = r["data"]["repos"]["data"][0]["attributes"]["trainees"]["data"]
+                        
+                        existing_trainees = [trainee["id"] for trainee in existing_trainees_resp]
 
-                        for a_id in assignments_ids:
-                            r = update_data_strapi(data=data, token=strapi_token, pluralapi=pluralapi, entry_id=a_id)
+                        same_trainee = trainee in existing_trainees
+                        
+                        
+                        if not same_trainee:
+                            print("Updating repo table entry repo-trainee relationship with current trainee...\n")
+                            
+                            repo_table_dict["trainees"] = existing_trainees + [trainee]
+                            
 
-                            if "error" in r:
-                                print("Error updating assignment table...\n")
+                            data = {"trainees": repo_table_dict["trainees"]}
 
-                                assignment_table_error_dict["trainee_id"].append(trainee_id)
-                                assignment_table_error_dict["user"].append(user)
-                                assignment_table_error_dict["repo_name"].append(repo_name)
-                                assignment_table_error_dict["branch"].append(branch)
-                                assignment_table_error_dict["error"].append(r["error"])
+                            q_query = """mutation updateRepo($id: ID!, $data: RepoInput!)
+                            {
+                                updateRepo(id: $id, data: $data)
+                                {
+                                    data
+                                    {
+                                        id
+                                    }   
+                                }
+                            }"""
+
+                            q_variables = {"id": repo_id, "data": data}
+
+                            r = send_graphql_query(client_url = client_url, query = q_query, variables= q_variables, token=strapi_token)
+
+
+                            if "error" not in r and "errors" not in r:
+                                print("Repo table entry trainee relationship updated successfully...\n")
+
+                            else:
+                                print("Error updating repo table entry trainee relationship...\n")
+
+                                repo_table_error_dict["trainee_id"].append(trainee_id)
+                                repo_table_error_dict["user"].append(user)
+                                repo_table_error_dict["repo_name"].append(repo_name)
+                                repo_table_error_dict["branch"].append(branch)
+                                try:
+                                    repo_table_error_dict["error"].append(r["error"])
+                                except:
+                                    repo_table_error_dict["error"].append((r["errors"]))
                                 
                                 continue
-                            else:
-                                print("Assignment table updated...\n")
+
 
                         
-                        # insert trainee_id and repo_id into trainee_repo_id dict
-                        trainee_repo_id_dict[trainee_id] = repo_id
-                                
+                    else:
+                        print("Repo does not exist in repo table...\n")
+
+                        #create a new entry in the repo table
+                        print("Creating new entry in repo table...\n")
+
+                        q_query = """mutation CreateRepoEntry($data: RepoInput!) 
+                            {
+                                createRepo(data: $data)
+                                    {
+                                        data
+                                        {
+                                            id
+                                        }
+                                    }
+                            }"""
+
+                        q_variables = {"data": repo_table_dict}
+
+                        r = send_graphql_query(client_url = client_url, query = q_query, variables= q_variables, token=strapi_token)
+
+                        #r = create_table_data_strapi(q_url, token=strapi_token, data=repo_table_dict)
+
+                        if "error" not in r and "errors" not in r:
+                            print("Repo table entry created successfully...\n")
+                            
+                            repo_id = r["data"]["createRepo"]["data"]["id"]
+
+                            #update assignments table
+                            print("Updating assignments table...\n")
+
+                            pluralapi = "assignments"
+
+                            q_query = """mutation updateAssignment($id: ID!, $data: AssignmentInput!) 
+                                {
+                                    updateAssignment(id: $id, data: $data) 
+                                        {
+                                            data 
+                                            {
+                                                id
+                                            }
+                                        }
+                                }"""
+                            
+                            for a_id in assignments_ids:
+                                q_variables = {"id": a_id, "data": {"repo": repo_id}}
+
+                                r = send_graphql_query(client_url = client_url, query = q_query, variables= q_variables, token=strapi_token)
+
+                                if "error" not in r and "errors" not in r:
+                                    print("Assignments table updated...\n")
+
+                                else:
+                                    print("Error updating assignments table...\n")
+                                    assignment_table_error_dict["trainee_id"].append(trainee_id)
+                                    assignment_table_error_dict["user"].append(user)
+                                    assignment_table_error_dict["repo_name"].append(repo_name)
+                                    assignment_table_error_dict["branch"].append(branch)
+                                    assignment_table_error_dict["assignment_id"].append(a_id)
+                                    try:
+                                        assignment_table_error_dict["error"].append(r["error"])
+                                    except:
+                                        assignment_table_error_dict["error"].append((r["errors"]))
+
+                                    continue
+
+                        
+
+                            
+                        else:
+                            print("Error creating new entry in repo table...\n")
+                            
+                            repo_table_error_dict["trainee_id"].append(trainee_id)
+                            repo_table_error_dict["user"].append(user)
+                            repo_table_error_dict["repo_name"].append(repo_name)
+                            repo_table_error_dict["branch"].append(branch)
+                            try:
+                                repo_table_error_dict["error"].append(r["error"])
+                            except:
+                                repo_table_error_dict["error"].append((r["errors"]))
+                           
+                            continue
 
 
+                        
+                    
+                else:
+                    print("Error creating entry in repo table...\n")
+                        
+                    repo_table_error_dict["trainee_id"].append(trainee_id)
+                    repo_table_error_dict["user"].append(user)
+                    repo_table_error_dict["repo_name"].append(repo_name)
+                    repo_table_error_dict["branch"].append(branch)
+                    try:
+                        repo_table_error_dict["error"].append(r["error"])
+                    except:
+                        repo_table_error_dict["error"].append((r["errors"]))
+                    continue
 
 
 
@@ -426,7 +576,8 @@ if github_token and strapi_token:
                 repo_meta_error_dict["user"].append(user)
                 repo_meta_error_dict["branch"].append(branch)
                 repo_meta_error_dict["error"].append(hld["repo_meta"])
-            
+
+                continue
 
             ############################################################################################### 
 
