@@ -1021,13 +1021,14 @@ def get_filtered_file_level(file_paths, converted_nbs, file_level_analysis) -> l
 
 
 
-def categorize_file_level_metrics(file_level_analysis, important_metrics_list):
+def categorize_file_level_metrics(file_level_analysis, important_metrics_list, metrics_descriptions_dict):
     """
     Categorizes the file level analysis results into important and other metrics
 
     Args:
         file_level_analysis (dict): The file level analysis results
         important_metrics_list (list): A list of important metrics
+        metrics_descriptions_dict (dict): A dictionary of metric descriptions
 
     Returns:
         A list of dictionaries of categorized file level analysis results
@@ -1042,20 +1043,52 @@ def categorize_file_level_metrics(file_level_analysis, important_metrics_list):
         files_dict["other_metrics"] = []
         
         for m,v in dict.items():
+
+            if m in metrics_descriptions_dict.keys():
+                 des = metrics_descriptions_dict[m]
+
+            if isinstance(v, float):
+                v = round(v, 2)
             
             if m in metrics:
+                val_dict = {"name": des, "value": v}
                 if  m in important_metrics_list:
 
-                        files_dict["important_metrics"].append({"name": m, "value": v})
+                    files_dict["important_metrics"].append(val_dict)
                 else:
-                    files_dict["other_metrics"].append({"name": m, "value": v})
+                    files_dict["other_metrics"].append(val_dict)
         categorized.append(files_dict)
     
     return categorized
 
 
+metrics_descriptions_dict = {
+                "additions": "added lines of code",
+                "avg_lines_per_class": "average lines of code per class",
+                "avg_lines_per_function": "average lines of code per function",
+                "avg_lines_per_method": "average lines of code per method",
+                "blank": "blank lines",
+                "cc": "cyclomatic complexity score",
+                "cc_rank": "cyclomatic complexity rank",
+                "comments": "lines of comments",
+                "difficulty": "quantified level of difficulty in writing the code",
+                "effort": "quantified effort invested in writing the codes",
+                "lloc": "logical lines of code",
+                "loc": "lines of code",
+                "mi": "maintainability index score",
+                "mi_rank": "maintainability index rank",
+                "multi": "multi-line comments",
+                "num_classes": "number of classes",
+                "num_functions": "number of functions",
+                "num_methods": "number of methods",
+                "single_comments": "single-line comments",
+                "sloc": "source lines of code",
+                "time": "quantified time spent in writing the code",
+            }
 
-def get_categorized_file_level(file_paths, converted_nbs, file_level_analysis, important_metrics_list=["loc", "num_functions", "num_classes", "num_methods"]) -> list:
+important_metrics_list=["loc", "num_functions", "num_classes", "num_methods"]
+
+def get_categorized_file_level(file_paths, converted_nbs, file_level_analysis, important_metrics_list=important_metrics_list, metrics_descriptions_dict=metrics_descriptions_dict) -> list:
     """
     Categorizes the file level analysis results into important and other metrics
 
@@ -1064,12 +1097,13 @@ def get_categorized_file_level(file_paths, converted_nbs, file_level_analysis, i
         converted_nbs (list): A list of file paths to converted notebook files
         file_level_analysis (dict): The file level analysis results
         important_metrics_list (list): A list of important metrics, default is ["loc", "num_functions", "num_classes", "num_methods"]
+        metrics_description_dict (dict): A dictionary of metric descriptions, default is {"additions": "added lines of code", "avg_lines_per_class": "average lines of code per class", "avg_lines_per_function": "average lines of code per function", "avg_lines_per_method": "average lines of code per method", "blank": "blank lines", "cc": "cyclomatic complexity score", "cc_rank": "cyclomatic complexity rank", "comments": "lines of comments", "difficulty": "quantified level of difficulty in writing the code", "effort": "quantified effort invested in writing the codes", "lloc": "logical lines of code", "loc": "lines of code", "mi": "maintainability index score", "mi_rank": "maintainability index rank", "multi": "multi-line comments", "num_classes": "number of classes", "num_functions": "number of functions", "num_methods": "number of methods", "single_comments": "single-line comments", "sloc": "source lines of code", "time": "quantified time spent in writing the code"}
 
     Returns:
         A list of dictionaries of categorized file level analysis results
     """
     fltd = get_filtered_file_level(file_paths, converted_nbs, file_level_analysis)
-    categorized = categorize_file_level_metrics(fltd, important_metrics_list)
+    categorized = categorize_file_level_metrics(fltd, important_metrics_list, metrics_descriptions_dict)
     return categorized
 
 
