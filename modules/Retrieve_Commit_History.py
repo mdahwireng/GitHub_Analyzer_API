@@ -157,6 +157,7 @@ class Retrieve_Commit_History:
         files__ = {}
         for r in r_list:
             r_ll = r.split("\t")
+            print("\n",r,"\n")
             status = r_ll[0].split(" ")[-1]
             if status[0] == "R":
                 similarity_index = status[1:-1]
@@ -189,25 +190,28 @@ class Retrieve_Commit_History:
         for s in s_list:
             s_ll = s.split("|")
             file_n = s_ll[0].strip()
-            
-            try:
-                tot_changes = int(s_ll[-1].split(" ")[-2].strip())
-            except:
-                tot_changes = 1
-            
-            changes = s_ll[-1].split(" ")[-1]
-            
-            try:
-                mult_factor = tot_changes/len(changes)
-            except:
-                mult_factor = 1
-            
-            additions = round(changes.count("+") * mult_factor,0)
-            deletions = round(changes.count("-") * mult_factor,0)
-            
-            if additions == 0 and deletions == 0:
-                tot_changes = 0
-            files__[file_n] = {"additions":int(additions), "deletions":int(deletions)}
+            if "Bin" and "->" in s_ll[1]:
+                changes = s_ll[1].strip()
+                files__[file_n] = {"file_type": "binary", "changes":changes }
+
+            else:
+                try:
+                    tot_changes = int(s_ll[-1].split(" ")[-2].strip())
+                except:
+                    tot_changes = 1
+                
+                changes = s_ll[-1].split(" ")[-1]
+                try:
+                    mult_factor = tot_changes/len(changes)
+                except:
+                    mult_factor = 1
+                
+                additions = round(changes.count("+") * mult_factor,0)
+                deletions = round(changes.count("-") * mult_factor,0)
+                
+                if additions == 0 and deletions == 0:
+                    tot_changes = 0
+                files__[file_n] = {"additions":int(additions), "deletions":int(deletions)}
         return files__
 
     def get_commit_history_and_contributors(self) -> list:
@@ -256,7 +260,7 @@ class Retrieve_Commit_History:
                 for l in l_split:
                     if l.__contains__("##"):
                         details.append(l)
-                    if l.__contains__(":") and not l.__contains__("##"):
+                    if l.__contains__(":") and not l.__contains__("##") and len(l.split(" ")) == 5:
                         raw.append(l)
                     if l.__contains__("|"):
                         stats.append(l)
