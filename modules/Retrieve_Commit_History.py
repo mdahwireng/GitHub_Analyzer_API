@@ -197,7 +197,10 @@ class Retrieve_Commit_History:
             
             changes = s_ll[-1].split(" ")[-1]
             
-            mult_factor = tot_changes/len(changes)
+            try:
+                mult_factor = tot_changes/len(changes)
+            except:
+                mult_factor = 1
             
             additions = round(changes.count("+") * mult_factor,0)
             deletions = round(changes.count("-") * mult_factor,0)
