@@ -189,10 +189,22 @@ class Retrieve_Commit_History:
         for s in s_list:
             s_ll = s.split("|")
             file_n = s_ll[0].strip()
+            
+            try:
+                tot_changes = int(s_ll[-1].split(" ")[-2].strip())
+            except:
+                tot_changes = 1
+            
             changes = s_ll[-1].split(" ")[-1]
-            additions = changes.count("+")
-            deletions = changes.count("-")
-            files__[file_n] = {"additions":additions, "deletions":deletions}
+            
+            mult_factor = tot_changes/len(changes)
+            
+            additions = round(changes.count("+") * mult_factor,0)
+            deletions = round(changes.count("-") * mult_factor,0)
+            
+            if additions == 0 and deletions == 0:
+                tot_changes = 0
+            files__[file_n] = {"additions":int(additions), "deletions":int(deletions)}
         return files__
 
     def get_commit_history_and_contributors(self) -> list:
@@ -251,10 +263,17 @@ class Retrieve_Commit_History:
                     stats_dict = self.treat_stat(stats)
 
                     for f,s in stats_dict.items():
-                        if f in raw_dict.keys():
-                            raw_dict[f].update(s)
+                        for r in raw_dict.keys():
+                            if "/" in f:
+                                f_ = f.split("/")[-1]
+                                if f_ in r and "=>" not in f: 
+                                    raw_dict[r].update(s)
+                            else:
+                                if r in f:
+                                    raw_dict[r].update(s)
 
                     raw_dict = [{"file":k, "details":v} for k,v in raw_dict.items()]
+                    
 
                     if self.owner and self.repo:
                         if author not in author_git_user_dict.keys():
@@ -314,9 +333,13 @@ class Retrieve_Commit_History:
                             addition_deletion_dict[c["author"]]["additions"] += f["details"]["additions"]
                         if "deletions" in f["details"].keys():
                             addition_deletion_dict[c["author"]]["deletions"] += f["details"]["deletions"]
+            
                 
                 contribution_count = [ {"author":a, "total_commits":c, "total_additions":addition_deletion_dict[a]["additions"], "total_deletions":addition_deletion_dict[a]["deletions"]} for a,c in contribution_count.items()]
-               
+            
+        for c in commit_history:
+            for f in c["files"]:
+                f["details"] = [{"name":k, "value":v} for k,v in f["details"].items()]
 
 
         print("\nCommit history retreival completed\n")   
