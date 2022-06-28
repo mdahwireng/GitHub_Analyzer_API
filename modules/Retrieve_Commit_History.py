@@ -157,7 +157,6 @@ class Retrieve_Commit_History:
         files__ = {}
         for r in r_list:
             r_ll = r.split("\t")
-            print("\n",r,"\n")
             status = r_ll[0].split(" ")[-1]
             if status[0] == "R":
                 similarity_index = status[1:-1]
@@ -211,7 +210,7 @@ class Retrieve_Commit_History:
                 
                 if additions == 0 and deletions == 0:
                     tot_changes = 0
-                files__[file_n] = {"additions":int(additions), "deletions":int(deletions)}
+                files__[file_n] = {"file_type":"non-binary","additions":int(additions), "deletions":int(deletions)}
         return files__
 
     def get_commit_history_and_contributors(self) -> list:
@@ -350,4 +349,4 @@ class Retrieve_Commit_History:
 
 
         print("\nCommit history retreival completed\n")   
-        return {"commit_history": commit_history, "contribution_counts": contribution_count, "commits_on_branch":len(commit_history), "commits_on_default_to_branch":self.n_commit_default_to_branch, "num_contributors":len(contribution_count), "branch":self.branch, "default_branch":self.default_branch, "repo_name":self.repo, "html_link":self.html_link}
+        return {"commit_history": commit_history, "contribution_counts": contribution_count[:100], "commits_on_branch":len(commit_history), "commits_on_default_to_branch":self.n_commit_default_to_branch, "num_contributors":len(contribution_count), "branch":self.branch, "default_branch":self.default_branch, "repo_name":self.repo, "html_link":self.html_link}
