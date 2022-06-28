@@ -35,14 +35,16 @@ def insert_data_strapi(data, pluralapi, url="https://dev-cms.10academy.org/api",
                         ).json()
         
         if "error" in r:
-            return {"Error: {}".format(r["error"])}
+            print("\nerror: {}\n".format(r["error"]))
+            return {"error": r["error"]}
         
         else:
             print("Data uploaded successfully into {}".format(pluralapi))
             return {**r["data"]}
     
     except Exception as e:
-        return {"Error: {}".format(e)}
+        print("\nerror: {}\n".format(e))
+        return {"error": e}
 
 
 def update_data_strapi(data, pluralapi,entry_id, url="https://dev-cms.10academy.org/api", token=False)->None:
@@ -78,14 +80,16 @@ def update_data_strapi(data, pluralapi,entry_id, url="https://dev-cms.10academy.
                         ).json()
         
         if "error" in r:
-            return {"Error: {}".format(r["error"])}
+            print("\nerror: {}\n".format(r["error"]))
+            return {"error":r["error"]}
         
         else:
             print("Data updated successfully into {}".format(pluralapi))
             return {**r["data"]}
     
     except Exception as e:
-        return {"Error: {}".format(e)}
+        print("\nerror: {}\n".format(e))
+        return {"error":e}
 
 
     
@@ -138,12 +142,13 @@ def get_table_data_strapi(url,token=False)->list:
             data.extend(r["data"])
             
         if "error" in r:
-            print("Error: {}".format(r["error"]))
+            print("\nerror: {}\n".format(r["error"]))
             return [{"error": r["error"]}]
         else:
             print("Data retrieved successfully from {}".format(url))
             return data
     except Exception as e:
+        print("\nerror: {}\n".format(e))
         return [{"error": e}]
 
 
@@ -175,6 +180,7 @@ def get_trainee_data(batch, base_url, token):
 
         return resp.json()["data"]["trainees"]["data"]
     except Exception as e:
+        print("\nerror: {}\n".format(e))
         return {"error": e}
 
 
@@ -258,4 +264,5 @@ def get_assignment_data(week, batch, base_url, token):
 
         return resp.json()
     except Exception as e:
+        print("\nerror: {}\n".format(e))
         return {"error": e}
