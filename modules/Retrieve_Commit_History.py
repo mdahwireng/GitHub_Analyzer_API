@@ -349,4 +349,4 @@ class Retrieve_Commit_History:
 
 
         print("\nCommit history retreival completed\n")   
-        return {"commit_history": commit_history, "contribution_counts": contribution_count[:100], "commits_on_branch":len(commit_history), "commits_on_default_to_branch":self.n_commit_default_to_branch, "num_contributors":len(contribution_count), "branch":self.branch, "default_branch":self.default_branch, "repo_name":self.repo, "html_link":self.html_link}
+        return {"commit_history": commit_history, "contribution_counts": contribution_count[:50], "commits_on_branch":len(commit_history), "commits_on_default_to_branch":self.n_commit_default_to_branch, "num_contributors":len(contribution_count), "branch":self.branch, "default_branch":self.default_branch, "repo_name":self.repo, "html_link":self.html_link}
