@@ -342,7 +342,7 @@ if github_token and strapi_token:
                         repo_id = r["data"]["repos"]["data"][0]["id"]
                         existing_trainees_resp = r["data"]["repos"]["data"][0]["attributes"]["trainees"]["data"]
                         
-                        existing_trainees = [trainee["id"] for trainee in existing_trainees_resp]
+                        existing_trainees = [int(trainee["id"]) for trainee in existing_trainees_resp]
 
                         same_trainee = trainee in existing_trainees
                         
@@ -576,8 +576,7 @@ if github_token and strapi_token:
                 repo_meta_error_dict["user"].append(user)
                 repo_meta_error_dict["branch"].append(branch)
                 repo_meta_error_dict["error"].append(hld["repo_meta"])
-
-                continue
+                
 
             ############################################################################################### 
 
@@ -834,7 +833,7 @@ if github_token and strapi_token:
         ###############################################################################################
         
         now = datetime.now()
-        output_dir = "data/run_errors" + now.strftime("%Y-%m-%d_%H-%M-%S")
+        output_dir = "data/run_errors/" + now.strftime("%Y-%m-%d_%H-%M-%S")
 
         
         
