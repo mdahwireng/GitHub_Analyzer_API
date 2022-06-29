@@ -1129,8 +1129,14 @@ def get_js_cc_summary(analysis_results, cc_key):
 
 def get_repo_level_summary(files, file_level):
     commulative_keys = ["blank","comments","lloc","loc","multi","single_comments","sloc","additions","num_functions","num_classes","num_methods","difficulty", "effort", "time"]
-                
-    repo_summary = {k:[] for k in file_level[list(file_level.keys())[0]].keys() if not k.endswith("_rank")}
+    f_level_keys = list(file_level.keys())
+    
+    try:
+        file_level.remove("error")
+    except:
+        pass
+    
+    repo_summary = {k:[] for k in file_level[f_level_keys[0]].keys() if not k.endswith("_rank")}
     for k in repo_summary.keys():
         for f in file_level:
             if not f.__contains__("changed_") and k in file_level[f].keys():
