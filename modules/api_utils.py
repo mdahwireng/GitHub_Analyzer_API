@@ -1131,10 +1131,6 @@ def get_repo_level_summary(files, file_level):
     commulative_keys = ["blank","comments","lloc","loc","multi","single_comments","sloc","additions","num_functions","num_classes","num_methods","difficulty", "effort", "time"]
     f_level_keys = list(file_level.keys())
     
-    try:
-        file_level.remove("error")
-    except:
-        pass
     
     repo_summary = {k:[] for k in file_level[f_level_keys[0]].keys() if not k.endswith("_rank")}
     for k in repo_summary.keys():
@@ -1154,6 +1150,12 @@ def get_repo_level_summary(files, file_level):
         repo_summary["mi_rank"] = mi_rank(repo_summary["mi"])
     except:
         repo_summary["mi_rank"] = None
+
+    try:
+        del repo_summary["error"]
+    except:
+        pass
+    
     
     return repo_summary
 
