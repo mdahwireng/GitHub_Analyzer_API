@@ -213,9 +213,13 @@ class Retrieve_Commit_History:
                 files__[file_n] = {"file_type":"non-binary","additions":int(additions), "deletions":int(deletions)}
         return files__
 
-    def get_commit_history_and_contributors(self) -> list:
+    def get_commit_history_and_contributors(self, max_files=20) -> list:
         """
         Returns a list of commit history
+
+        Args:
+            max_files (int): The maximum number of files to be returned for each commit, default is 20
+
         Returns:
             A dictionary containing the commit history, contributors, number of commits and number of contributors
         """
@@ -344,9 +348,10 @@ class Retrieve_Commit_History:
                 contribution_count = [ {"author":a, "total_commits":c, "total_additions":addition_deletion_dict[a]["additions"], "total_deletions":addition_deletion_dict[a]["deletions"]} for a,c in contribution_count.items()]
             
         for c in commit_history:
+            c["files"] = c["files"][:max_files]
             for f in c["files"]:
                 f["details"] = [{"name":k, "value":v} for k,v in f["details"].items()]
 
 
         print("\nCommit history retreival completed\n")   
-        return {"commit_history": commit_history[:100], "contribution_counts": contribution_count, "commits_on_branch":len(commit_history), "commits_on_default_to_branch":self.n_commit_default_to_branch, "num_contributors":len(contribution_count), "branch":self.branch, "default_branch":self.default_branch, "repo_name":self.repo, "html_link":self.html_link}
+        return {"commit_history": commit_history, "contribution_counts": contribution_count, "commits_on_branch":len(commit_history), "commits_on_default_to_branch":self.n_commit_default_to_branch, "num_contributors":len(contribution_count), "branch":self.branch, "default_branch":self.default_branch, "repo_name":self.repo, "html_link":self.html_link}
