@@ -14,10 +14,10 @@ from modules.Treat_Assignment_Response import Get_Assignment_Data
 from modules.api_utils import send_get_req
 
 
-"""curdir = os.path.dirname(os.path.realpath(__file__))
+curdir = os.path.dirname(os.path.realpath(__file__))
 cpath = os.path.dirname(curdir)
 if not cpath in sys.path:
-    sys.path.append(cpath)"""
+    sys.path.append(cpath)
 
 
 
@@ -53,10 +53,11 @@ if github_token and strapi_token:
         print("\nThe state file does not exit and system will exit now...\n")
         sys.exit(1)
 
-    current_week = datetime.now().isocalendar()[1] - 3
+    current_week = datetime.now().isocalendar()[1] - 1
     training_week = current_week - 18
     
     week= "week{}".format(training_week)
+    print("\nCurrent week is {}\n".format(week))
     batch = state_dict["batch"]
     run_number = state_dict["run_number"]
 
@@ -231,6 +232,7 @@ if github_token and strapi_token:
             branch = row["branch_name"]
             trainee = row["trainee"]
             assignments_ids = row["assignments_ids"]
+            repo_id = None
 
             print("\n\n\nRetrieving data for user: {} and repo: {}...".format(user, repo_name))
             print("\n")
@@ -386,7 +388,7 @@ if github_token and strapi_token:
                                 except:
                                     repo_table_error_dict["error"].append((r["errors"]))
                                 
-                                continue
+                               
 
 
                         
@@ -454,7 +456,7 @@ if github_token and strapi_token:
                                     except:
                                         assignment_table_error_dict["error"].append((r["errors"]))
 
-                                    continue
+                                   
 
                         
 
@@ -471,7 +473,7 @@ if github_token and strapi_token:
                             except:
                                 repo_table_error_dict["error"].append((r["errors"]))
                            
-                            continue
+                            
 
 
                         
@@ -487,7 +489,7 @@ if github_token and strapi_token:
                         repo_table_error_dict["error"].append(r["error"])
                     except:
                         repo_table_error_dict["error"].append((r["errors"]))
-                    continue
+                    
 
 
 
@@ -833,7 +835,7 @@ if github_token and strapi_token:
         ###############################################################################################
         
         now = datetime.now()
-        output_dir = "data/run_errors/" + now.strftime("%Y-%m-%d_%H-%M-%S")
+        output_dir = "data/run_errors/main_run_errors/" + now.strftime("%Y-%m-%d_%H-%M-%S")
 
         
         
