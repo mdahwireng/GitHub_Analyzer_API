@@ -348,6 +348,7 @@ class Retrieve_Commit_History:
                 contribution_count = [ {"author":a, "total_commits":c, "total_additions":addition_deletion_dict[a]["additions"], "total_deletions":addition_deletion_dict[a]["deletions"]} for a,c in contribution_count.items()]
             
         for c in commit_history:
+            c["num_files"] = len(c["files"])
             c["files"] = c["files"][:max_files]
             for f in c["files"]:
                 f["details"] = [{"name":k, "value":v} for k,v in f["details"].items()]
