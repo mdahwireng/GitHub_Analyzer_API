@@ -1,15 +1,18 @@
 import json
 import pandas as pd
-
+from datetime import datetime
+from dateutil import parser
+import pytz
 import requests
 
 
 class Get_Assignment_Data:
-    def __init__(self, week, batch, base_url, token):
+    def __init__(self, week, batch, base_url, token, previous_analyzed_assignments=[]):
         self.week = week
         self.batch = batch
         self.base_url = base_url
         self.token = token
+        self.previous_analyzed_assignments = previous_analyzed_assignments
 
 
 
@@ -58,6 +61,7 @@ class Get_Assignment_Data:
                     attributes{
                     name
                     topic
+                    due_date
                     }
                 }
                 }
@@ -112,10 +116,27 @@ class Get_Assignment_Data:
 
     def get_filtered_assignment_data(self, assignments):
         details = {}
+        subs_dict = {}
+        analyzed_assignments = []
+        utc=pytz.UTC
+
+        default_due_date = datetime.now().replace(tzinfo=utc)
+        run_date = datetime.now().replace(tzinfo=utc)
+        
         for asn in assignments["data"]['assignments']["data"]:
             for dt in asn['attributes']['assignment_submission_content']:
+                due_date = asn["attributes"]["assignment_category"]["data"]["attributes"]["due_date"]
                 
-                if dt['type'] == "github-link":
+                assignment_name = asn['attributes']['assignment_category']['data']['attributes']['name']
+
+                if not due_date:
+                    due_date = default_due_date
+                else:
+                    due_date = parser.parse(due_date).replace(tzinfo=utc)
+                
+                
+                
+                if dt['type'] == "github-link" and due_date < run_date and assignment_name not in self.previous_analyzed_assignments:
                     
                     lnk = dt['url']
                     root = self.link_root(lnk)
@@ -124,7 +145,21 @@ class Get_Assignment_Data:
                     trainee = trainee_data["id"]
                     trainee_id = trainee_data["attributes"]["trainee_id"]
                     assignment_id = asn['id']
+                    
+                    if assignment_name not in analyzed_assignments:
 
+                        print("\nAnalyzing {}\n".format(assignment_name))
+
+                    
+                    if trainee_id not in subs_dict:
+                        subs_dict[trainee_id] = {"final":None, "interim":None, "other":[]}
+                    
+                    if "final" in assignment_name.lower():
+                        subs_dict[trainee_id]["final"] = lnk
+                    elif "interim" in assignment_name.lower():
+                        subs_dict[trainee_id]["interim"] = lnk
+                    else:
+                        subs_dict[trainee_id]["other"].append(lnk)
                     
                     
                     if trainee_id not in details.keys():
@@ -141,6 +176,11 @@ class Get_Assignment_Data:
                     
                     details[trainee_id]["root_url"].append(root)
                     details[trainee_id]["assignments_ids"].append(assignment_id)
+                    
+                    analyzed_assignments.append(assignment_name)
+         
+        self.analyzed_assignments = set(analyzed_assignments)
+        self.subs_dict = subs_dict
 
         return details
 
@@ -149,8 +189,17 @@ class Get_Assignment_Data:
     def get_filtered_assignment_data_records(self, filtered_assignment_data):
         asn_df_list = []
         for k,v in filtered_assignment_data.items():
-            v["root_url"].sort()
-            asn_df_dict = {"trainee":v["trainee"], "trainee_id":k, "root_url":v["root_url"][0], "assignments_ids":v["assignments_ids"]}
+            
+            if self.subs_dict[k]["final"]:
+                root_url = self.subs_dict[k]["final"]
+            elif self.subs_dict[k]["interim"]:
+                root_url = self.subs_dict[k]["interim"]
+            else:
+                other_urls = self.subs_dict[k]["other"]
+                other_urls.sort()
+                root_url = other_urls[0]
+
+            asn_df_dict = {"trainee":v["trainee"], "trainee_id":k, "root_url":root_url, "assignments_ids":v["assignments_ids"]}
             asn_df_list.append(asn_df_dict)
 
         return asn_df_list
@@ -166,6 +215,12 @@ class Get_Assignment_Data:
             return data_df
         except Exception as e:
             return {"error": e}
+
+    def get_analyzed_assignments(self):
+        """
+        Returns a list of assignments that have been analyzed
+        """
+        return self.analyzed_assignments
 
 
 
