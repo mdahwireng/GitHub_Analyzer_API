@@ -16,7 +16,13 @@ class PrepareAssignmentDf:
                 link = link[:-4]
             if link.endswith("/"):
                 link = link[:-1]
-            
+            if link.__contains__("/blob/"):
+                parts = link.split("/blob/")
+                link = parts[0] + "/tree/" + parts[1]
+            if link.__contains__("/tree/"):
+                parts = link.split("/tree/")
+                link = parts[0] + "/tree/" + parts[1].split("/")[0]
+
         return link
 
     
