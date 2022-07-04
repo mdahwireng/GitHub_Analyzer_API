@@ -117,7 +117,7 @@ class Get_Assignment_Data:
     def get_filtered_assignment_data(self, assignments):
         details = {}
         subs_dict = {}
-        analyzed_assignments = []
+        analyzed_assignments = set()
         utc=pytz.UTC
 
         default_due_date = datetime.now().replace(tzinfo=utc)
@@ -152,12 +152,12 @@ class Get_Assignment_Data:
 
                     
                     if trainee_id not in subs_dict:
-                        subs_dict[trainee_id] = {"final":None, "interim":None, "other":[]}
+                        subs_dict[trainee_id] = {"final":[], "interim":[], "other":[]}
                     
                     if "final" in assignment_name.lower():
-                        subs_dict[trainee_id]["final"] = lnk
+                        subs_dict[trainee_id]["final"].append(lnk)
                     elif "interim" in assignment_name.lower():
-                        subs_dict[trainee_id]["interim"] = lnk
+                        subs_dict[trainee_id]["interim"].append(lnk)
                     else:
                         subs_dict[trainee_id]["other"].append(lnk)
                     
@@ -169,15 +169,15 @@ class Get_Assignment_Data:
                         details[trainee_id]["root_url"] = []
                     
                     if "assignments_ids" not in details[trainee_id].keys():
-                        details[trainee_id]["assignments_ids"] = []
+                        details[trainee_id]["assignments_ids"] = set()
 
                     if "trainee" not in details[trainee_id].keys():
                         details[trainee_id]["trainee"] = trainee
                     
                     details[trainee_id]["root_url"].append(root)
-                    details[trainee_id]["assignments_ids"].append(assignment_id)
+                    details[trainee_id]["assignments_ids"].add(assignment_id)
                     
-                    analyzed_assignments.append(assignment_name)
+                    analyzed_assignments.add(assignment_name)
          
         self.analyzed_assignments = set(analyzed_assignments)
         self.subs_dict = subs_dict
@@ -191,15 +191,15 @@ class Get_Assignment_Data:
         for k,v in filtered_assignment_data.items():
             
             if self.subs_dict[k]["final"]:
-                root_url = self.subs_dict[k]["final"]
+                root_url = self.subs_dict[k]["final"][0]
             elif self.subs_dict[k]["interim"]:
-                root_url = self.subs_dict[k]["interim"]
+                root_url = self.subs_dict[k]["interim"][0]
             else:
                 other_urls = self.subs_dict[k]["other"]
                 other_urls.sort()
                 root_url = other_urls[0]
 
-            asn_df_dict = {"trainee":v["trainee"], "trainee_id":k, "root_url":root_url, "assignments_ids":v["assignments_ids"]}
+            asn_df_dict = {"trainee":v["trainee"], "trainee_id":k, "root_url":root_url, "assignments_ids":list(v["assignments_ids"])}
             asn_df_list.append(asn_df_dict)
 
         return asn_df_list
