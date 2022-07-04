@@ -14,6 +14,8 @@ class PrepareAssignmentDf:
         if not isinstance(link, float) and len(link) > 0:
             if link.endswith(".git"):
                 link = link[:-4]
+            if "/commit/" in link:
+                link = link.split("/commit/")[0]
             if link.endswith("/"):
                 link = link[:-1]
             if link.__contains__("/blob/"):
