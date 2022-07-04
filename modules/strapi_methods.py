@@ -3,7 +3,7 @@ import json
 
 from modules.api_utils import send_get_req
 
-def insert_data_strapi(data, pluralapi, url="https://dev-cms.10academy.org/api", token=False)->None:
+def insert_data_strapi(data, pluralapi, url="https://dev-cms.10academy.org", token=False)->None:
     """ 
     Insert data into strapi table given data, pluralapi and strapi token
     Returns None
@@ -23,7 +23,7 @@ def insert_data_strapi(data, pluralapi, url="https://dev-cms.10academy.org/api",
     else:
         headers = {"Content-Type": "application/json"}
     
-    url = url + "/{}"
+    url = url + "/api/{}"
 
     insert_url =  url.format(pluralapi)
     
@@ -47,7 +47,7 @@ def insert_data_strapi(data, pluralapi, url="https://dev-cms.10academy.org/api",
         return {"error": e}
 
 
-def update_data_strapi(data, pluralapi,entry_id, url="https://dev-cms.10academy.org/api", token=False)->None:
+def update_data_strapi(data, pluralapi,entry_id, url="https://dev-cms.10academy.org", token=False)->None:
     """
     Update data in strapi table given data, pluralapi and strapi token
     Returns None
@@ -68,7 +68,7 @@ def update_data_strapi(data, pluralapi,entry_id, url="https://dev-cms.10academy.
     else:
         headers = {"Content-Type": "application/json"}
     
-    url = url + "/{}/{}"
+    url = url + "/api/{}/{}"
 
     insert_url =  url.format(pluralapi,entry_id)
     
@@ -162,7 +162,6 @@ def get_trainee_data(batch, base_url, token):
       id
       attributes{{
         trainee_id
-        email
       }}
     }}
     }}
@@ -178,7 +177,10 @@ def get_trainee_data(batch, base_url, token):
     try:
         resp, resp_status = send_get_req(url, headers)
 
-        return resp.json()["data"]["trainees"]["data"]
+        all_data = resp.json()["data"]["trainees"]["data"]
+        trainee_dict = {row["attributes"]["trainee_id"]:row["id"] for row in all_data}
+        return trainee_dict
+        
     except Exception as e:
         print("\nerror: {}\n".format(e))
         return {"error": e}
