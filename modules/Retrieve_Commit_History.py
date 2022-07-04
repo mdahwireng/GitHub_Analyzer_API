@@ -236,8 +236,8 @@ class Retrieve_Commit_History:
                     break
                 if l not in unique_commits:
                     unique_commits.append(l)
-            if "Merge" in unique_commits[-1]:
-                unique_commits.pop(-1)
+            # if "Merge" in unique_commits[-1]:
+            #     unique_commits.pop(-1)
             unique_commits = [l.split(" ")[0] for l in unique_commits]
             unique_commits_lines = []
 
