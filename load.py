@@ -221,8 +221,6 @@ if github_token and strapi_token:
         repo_metric_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "branch":[], "error":[]}
         entry_made_into_analysis_table = False
 
-        trainee_repo_id_dict = {}
-
         github_df["trainee"] = github_df.trainee.astype(int)
 
         for i, row in github_df.iterrows():
@@ -389,6 +387,42 @@ if github_token and strapi_token:
                                     repo_table_error_dict["error"].append(r["error"])
                                 except:
                                     repo_table_error_dict["error"].append((r["errors"]))
+                        
+                        #update assignments table
+                        print("Updating assignments table...\n")
+
+                        pluralapi = "assignments"
+
+                        q_query = """mutation updateAssignment($id: ID!, $data: AssignmentInput!) 
+                            {
+                                updateAssignment(id: $id, data: $data) 
+                                    {
+                                        data 
+                                        {
+                                            id
+                                        }
+                                    }
+                            }"""
+                        
+                        for a_id in assignments_ids:
+                            q_variables = {"id": a_id, "data": {"repo": repo_id}}
+
+                            r = send_graphql_query(client_url = client_url, query = q_query, variables= q_variables, token=strapi_token)
+
+                            if "error" not in r and "errors" not in r:
+                                print("Assignments table updated...\n")
+
+                            else:
+                                print("Error updating assignments table...\n")
+                                assignment_table_error_dict["trainee_id"].append(trainee_id)
+                                assignment_table_error_dict["user"].append(user)
+                                assignment_table_error_dict["repo_name"].append(repo_name)
+                                assignment_table_error_dict["branch"].append(branch)
+                                assignment_table_error_dict["assignment_id"].append(a_id)
+                                try:
+                                    assignment_table_error_dict["error"].append(r["error"])
+                                except:
+                                    assignment_table_error_dict["error"].append((r["errors"]))
                                 
                                
 
@@ -499,78 +533,83 @@ if github_token and strapi_token:
                 ###############################################################################################
                 #get repo meta dict
                 
+                if repo_id is not None:
 
 
-                print("Repo meta data dict created\n")
+                    print("Repo meta data dict created\n")
 
-                # check for entry in strapi
-                pluralapi = "github-repo-metas"
-                week = week
-                q_url = "{}/api/{}?filters[trainee][id][$eq]={}".format(base_url, pluralapi, trainee)
+                    # check for entry in strapi
+                    pluralapi = "github-repo-metas"
+                    week = week
+                    q_url = "{}/api/{}?filters[trainee][id][$eq]={}".format(base_url, pluralapi, trainee)
 
-                r = get_table_data_strapi(q_url, token=strapi_token)
+                    r = get_table_data_strapi(q_url, token=strapi_token)
 
-                """try:
-                    r = requests.get(
-                                    q_url,
-                                    headers = headers
-                                    ).json()
-                except Exception as e:
-                    print("Error in getting repo meta data from strapi: {}\n".format(e))
-                    repo_meta_error_dict["trainee_id"].append(trainee_id)
-                    repo_meta_error_dict["user"].append(user)
-                    repo_meta_error_dict["repo_name"].append(repo_name)
-                    repo_meta_error_dict["error"].append(e)
-                    continue"""
-                
+                    """try:
+                        r = requests.get(
+                                        q_url,
+                                        headers = headers
+                                        ).json()
+                    except Exception as e:
+                        print("Error in getting repo meta data from strapi: {}\n".format(e))
+                        repo_meta_error_dict["trainee_id"].append(trainee_id)
+                        repo_meta_error_dict["user"].append(user)
+                        repo_meta_error_dict["repo_name"].append(repo_name)
+                        repo_meta_error_dict["error"].append(e)
+                        continue"""
+                    
 
-                # check if entry exists
-                r_filtered = [r_i for r_i in r if r_i["attributes"]["trainee_id"] == trainee_id and r_i["attributes"]["run_number"] == run_number and r_i["attributes"]["week"]== week]
-                if len(r_filtered) == 0:
-                    print("Creating repo meta data dict...\n")
-                    print("Entry does not exist in strapi...\n")
-                    print("Creating entry in strapi...\n\n")
+                    # check if entry exists
+                    r_filtered = [r_i for r_i in r if r_i["attributes"]["trainee_id"] == trainee_id and r_i["attributes"]["run_number"] == run_number and r_i["attributes"]["week"]== week]
+                    if len(r_filtered) == 0:
+                        print("Creating repo meta data dict...\n")
+                        print("Entry does not exist in strapi...\n")
+                        print("Creating entry in strapi...\n\n")
 
-                    repo_meta_dict = {col:(_dict[trainee_id]["repo_meta"][col]
-                        if col in _dict[trainee_id]["repo_meta"].keys() else None)  for col in repo_meta_df_cols}
-
-
-                    if starter_code_ref_basevalues:
-                        # normalize the repo data
-                        print("Normalizing repo_meta data...\n")
-                        repo_dict = normalize_repo_data(repo_meta_dict, starter_code_ref_basevalues)
-
-                    #fill in the default values where necessary
-                    repo_meta_dict = {col:(repo_meta_dict[col]
-                        if col in _dict[trainee_id]["repo_meta"].keys() and repo_meta_dict[col] != None
-                        else repo_meta_df_cols_default[col])  for col in repo_meta_df_cols}
+                        repo_meta_dict = {col:(_dict[trainee_id]["repo_meta"][col]
+                            if col in _dict[trainee_id]["repo_meta"].keys() else None)  for col in repo_meta_df_cols}
 
 
-                    repo_meta_dict["trainee_id"] = trainee_id
-                    repo_meta_dict["trainee"] = trainee
-                    repo_meta_dict["run_number"] = run_number
-                    repo_meta_dict["repo"] = repo_id
-                    repo_meta_dict["week"] = week
+                        if starter_code_ref_basevalues:
+                            # normalize the repo data
+                            print("Normalizing repo_meta data...\n")
+                            repo_dict = normalize_repo_data(repo_meta_dict, starter_code_ref_basevalues)
 
-                    _r = insert_data_strapi(data=repo_meta_dict, pluralapi=pluralapi, token=strapi_token, url=base_url)
+                        #fill in the default values where necessary
+                        repo_meta_dict = {col:(repo_meta_dict[col]
+                            if col in _dict[trainee_id]["repo_meta"].keys() and repo_meta_dict[col] != None
+                            else repo_meta_df_cols_default[col])  for col in repo_meta_df_cols}
 
-                    if "error" in _r:
+
+                        repo_meta_dict["trainee_id"] = trainee_id
+                        repo_meta_dict["trainee"] = trainee
+                        repo_meta_dict["run_number"] = run_number
+                        repo_meta_dict["repo"] = repo_id
+                        repo_meta_dict["week"] = week
+
+                        _r = insert_data_strapi(data=repo_meta_dict, pluralapi=pluralapi, token=strapi_token, url=base_url)
+
+                        if "error" in _r:
+                            print("Error creating entry in repo meta table...\n")
+                            repo_meta_error_dict["trainee_id"].append(trainee_id)
+                            repo_meta_error_dict["user"].append(user)
+                            repo_meta_error_dict["repo_name"].append(repo_name)
+                            repo_meta_error_dict["branch"].append(branch)
+                            repo_meta_error_dict["error"].append(_r["error"])
+                            
+                    
+                    else:
                         print("Error creating entry in repo meta table...\n")
+                        print("Entry already exists in strapi...\n")
                         repo_meta_error_dict["trainee_id"].append(trainee_id)
                         repo_meta_error_dict["user"].append(user)
                         repo_meta_error_dict["repo_name"].append(repo_name)
                         repo_meta_error_dict["branch"].append(branch)
-                        repo_meta_error_dict["error"].append(_r["error"])
-                        
-                
+                        repo_meta_error_dict["error"].append("Repo meta already exists in repo meta table")
+
                 else:
-                    print("Error creating entry in repo meta table...\n")
-                    print("Entry already exists in strapi...\n")
-                    repo_meta_error_dict["trainee_id"].append(trainee_id)
-                    repo_meta_error_dict["user"].append(user)
-                    repo_meta_error_dict["repo_name"].append(repo_name)
-                    repo_meta_error_dict["branch"].append(branch)
-                    repo_meta_error_dict["error"].append("Repo meta already exists in repo meta table")
+                    print("Error creating entry in to repo table. Hence repo meta entry is skipped..\n")
+                    continue
                     
 
             else:
@@ -895,6 +934,17 @@ if github_token and strapi_token:
             repo_metric_error_df.to_csv("{}/b{}_{}_trainees_with_github_repo_analysis_error_{}.csv".format(output_dir, batch, week, now.strftime("%Y_%m_%d__%H_%M_%S")), index=False)
             
         
+        # save users with assignment data update error
+        if len(assignment_table_error_dict["user"]) > 0:
+            print("Saving trainees with assignment data update error\n")
+            assignment_table_error_df = pd.DataFrame(assignment_table_error_dict)
+
+            if not os.path.isdir(output_dir):
+                os.makedirs(output_dir)
+
+            now = datetime.now()
+            assignment_table_error_df.to_csv("{}/b{}_{}_trainees_with_assignment_data_update_error_{}.csv".format(output_dir, batch, week, now.strftime("%Y_%m_%d__%H_%M_%S")), index=False)
+
         
         
         
@@ -979,6 +1029,7 @@ if github_token and strapi_token:
 
                     cat_df.fillna(-999, inplace=True)
                     
+                    trainee_repo_id_dict = {}
 
                     for i,row in cat_df.iterrows():
                         for col in repo_metrics_cols:
