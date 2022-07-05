@@ -11,7 +11,7 @@ cpath = os.path.dirname(curdir)
 if not cpath in sys.path:
     sys.path.append(cpath)
 
-from modules.api_utils import add_js_additions, check_lang_exit, get_categorized_file_level, get_cc_summary, get_file_level_summary, get_filtered_file_level, get_js_cc_summary, get_jsrepo_level_summary, get_recent_commit_stamp, get_repo_level_summary, retrieve_commits, retrieve_repo_meta, run_jsanalysis, run_pyanalysis, run_to_get_adds_and_save_content, send_get_req
+from modules.api_utils import add_js_additions, check_lang_exit, get_categorized_file_level, get_cc_summary, get_commit_hist, get_file_level_summary, get_filtered_file_level, get_js_cc_summary, get_jsrepo_level_summary, get_recent_commit_stamp, get_repo_level_summary, retrieve_commits, retrieve_repo_meta, run_jsanalysis, run_pyanalysis, run_to_get_adds_and_save_content, send_get_req
 
 
 app = Flask(__name__)
@@ -293,8 +293,8 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, branch, ap
                 
                 if len(repo_details) == 0:
                     if api:
-                        return jsonify({"repo_meta":{"error":"Not Found"}, "analysis_results":{"error":"Not Found"}})
-                    return {"repo_meta":{"error":"Not Found"}, "analysis_results":{"error":"Not Found"}}
+                        return jsonify({"repo_meta":{"error":"Not Found"}, "analysis_results":{"error":"Not Found"}, "commit_history":{"error":"Not Found"}})
+                    return {"repo_meta":{"error":"Not Found"}, "analysis_results":{"error":"Not Found"}, "commit_history":{"error":"Not Found"}}
             else:
                 if api:
                     return jsonify({"repo_meta":{"error":"Not Found"}, "analysis_results":{"error":"Not Found"}}) 
@@ -360,9 +360,10 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, branch, ap
                 return {"repo_meta":dt, "analysis_results":{"error" : stderr}, "commit_history":{"error" : stderr}}
 
         else:
+            commit_history_dict = get_commit_hist(user=user ,repo_name=repo_name, repo_dict=repo_details[0], branch=branch, token=token)
             if api:
-                return jsonify({"repo_meta":dt, "analysis_results":{"error":"repository does not contain {} files".format(lang_list)}, "commit_history":{"error":"repository does not contain {} files".format(lang_list)}})
-            return {"repo_meta":dt, "analysis_results":{"error":"repository does not contain {} files".format(lang_list)}, "commit_history":{"error":"repository does not contain {} files".format(lang_list)}}
+                return jsonify({"repo_meta":dt, "analysis_results":{"error":"repository does not contain {} files".format(lang_list)}, "commit_history":commit_history_dict})
+            return {"repo_meta":dt, "analysis_results":{"error":"repository does not contain {} files".format(lang_list)}, "commit_history":commit_history_dict}
 
     else:
         if api:

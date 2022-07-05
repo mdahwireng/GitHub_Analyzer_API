@@ -853,6 +853,58 @@ def run_to_get_adds_and_save_content(user, repo_name, repo_dict, file_ext, branc
         return stderr, return_code, dict(), list(), dict(), dict(), list()
 
 
+def get_commit_hist(repo_name, user, token, repo_dict, branch=None) -> dict:
+    """
+    Retrieve commit history on a given branch.
+
+    Args:
+        repo_name(str): the name of the repository to be used for naming the directory
+        user(str): The user name of the github repository.
+        token(str): the github token to be used for the analysis
+        repo_dict(dict): dictionary of metadata returned as a response to a request to get metadata on repository
+        branch(str): the branch to be used for the analysis
+
+    Returns:
+        A dictionary of commit history on a given branch
+
+    """
+    # dir for named repo
+    repo_path = create_repo_dir(repo_name)
+
+    # clone repo
+    stderr, return_code = clone_repo(repo_path=repo_path, clone_url=repo_dict["clone_url"])
+   
+    # if there is no error
+    if return_code == 0:
+
+        # change working directory to cloned reository
+        os.chdir(repo_path)
+
+        default_branch = None
+
+        github_dict = {"owner":user, "repo":repo_name, "token":token}
+
+        # checkout to branch
+        if branch:
+            default_branch = get_git_branch()
+            stderr, return_code =  check_out_branch(branch_name=branch)
+
+            # retrive commit history
+            branch_dict = {"default":default_branch, "branch":branch}
+            ret_commit = Retrieve_Commit_History(github_dict=github_dict, branch_dict=branch_dict)
+        else:
+            # retrieve commit history
+            default_branch = get_git_branch()
+            branch_dict = {"default":default_branch, "branch":default_branch}
+            ret_commit = Retrieve_Commit_History(github_dict=github_dict, branch_dict=branch_dict)
+        
+        commit_history_dict = ret_commit.get_commit_history_and_contributors()
+        return commit_history_dict
+    
+    else:
+        return dict()
+
+
 
 def run_jsanalysis(files):
     """
