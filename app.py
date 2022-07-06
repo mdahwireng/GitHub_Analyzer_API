@@ -361,6 +361,11 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, branch, ap
 
         else:
             commit_history_dict = get_commit_hist(user=user ,repo_name=repo_name, repo_dict=repo_details[0], branch=branch, token=token)
+            
+            # delete repository directory after retrieving commit history
+            os.chdir("../../")
+            shutil.rmtree("tmp/"+repo_name)
+
             if api:
                 return jsonify({"repo_meta":dt, "analysis_results":{"error":"repository does not contain {} files".format(lang_list)}, "commit_history":commit_history_dict})
             return {"repo_meta":dt, "analysis_results":{"error":"repository does not contain {} files".format(lang_list)}, "commit_history":commit_history_dict}
