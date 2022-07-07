@@ -1109,8 +1109,7 @@ class Load_To_Strapi:
             repo_id = self.load_repo_meta_and_repo_to_strapi(_dict, hld, repo_meta_error_dict, repo_table_error_dict, assignment_table_error_dict, trainee_id, repo_name, branch, user, trainee, assignments_ids)
 
             if repo_id is not None:
-                self.load_user_meta_to_strapi(hld, repo_id, user_error_dict, user, repo_name, branch, trainee_id, trainee, _dict)
-                    # load repo_user_meta
+                # load repo_user_meta
                 self.load_user_meta_to_strapi(hld, repo_id, user_error_dict, user, repo_name, branch, trainee_id, trainee, _dict)
 
                 # load commit history
