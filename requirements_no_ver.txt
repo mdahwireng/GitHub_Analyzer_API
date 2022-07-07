@@ -16,6 +16,9 @@ backcall
 beautifulsoup4
 bleach
 blinker
+boto3
+botocore
+cached-property
 cachelib
 cachetools
 cattrs
@@ -28,6 +31,7 @@ colorama
 colorlog
 commonmark
 connexion
+cron-descriptor
 croniter
 cryptography
 debugpy
@@ -39,6 +43,7 @@ dnspython
 docutils
 email-validator
 entrypoints
+exceptiongroup
 executing
 fastjsonschema
 Flask
@@ -52,11 +57,18 @@ Flask-Session
 Flask-SQLAlchemy
 Flask-WTF
 future
+google-api-core
+google-api-python-client
 google-auth
+google-auth-httplib2
+google-auth-oauthlib
+googleapis-common-protos
 graphviz
+greenlet
 gunicorn
 h11
 httpcore
+httplib2
 httpx
 idna
 importlib-metadata
@@ -70,6 +82,7 @@ iso8601
 itsdangerous
 jedi
 Jinja2
+jmespath
 jsonschema
 jupyter
 jupyter-client
@@ -108,12 +121,15 @@ packaging
 pandas
 pandocfilters
 parso
+pathspec
 pendulum
 pexpect
 pickleshare
+pluggy
 prison
 prometheus-client
 prompt-toolkit
+protobuf
 psutil
 ptyprocess
 pure-eval
@@ -141,6 +157,7 @@ requests-oauthlib
 rfc3986
 rich
 rsa
+s3transfer
 Send2Trash
 setproctitle
 six
@@ -161,6 +178,7 @@ tornado
 traitlets
 typing-extensions
 unicodecsv
+uritemplate
 urllib3
 wcwidth
 webencodings

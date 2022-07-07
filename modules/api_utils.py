@@ -7,6 +7,8 @@ import lizard
 from radon.complexity import cc_rank
 from radon.metrics import mi_rank
 
+from modules.Retrieve_Commit_History import Retrieve_Commit_History
+
 
 
 def send_get_req(_url, _header=None) -> tuple:
@@ -131,10 +133,29 @@ def retrieve_num_branches(user, repo, headers) -> int:
 
     # retrieve number of branches and return the value
     return len(send_get_req(_url=branches_url, _header=headers)[0].json())
+
+
+def retrieve_branch_sha(user, repo, headers, branch) -> str:
+    """
+    Retrieves the sha of a branch in a github repository. 
+    Returns string of the sha of the branch
+
+    Args:
+        user(str): github username
+        repo(str): name of repo to retrieve meta data from
+        headers(dict): header to attach to the request
+        branch(str): name of branch to retrieve sha of
+
+    Returns:
+        string of the sha of the branch
+    """
+    branch_url = "https://api.github.com/repos/{}/{}/branches/{}".format(user,repo,branch)
+    return send_get_req(_url=branch_url, _header=headers)[0].json()["commit"]["sha"]
+
    
 
 
-def retrieve_num_commits(user, repo, headers) -> int:
+def retrieve_num_commits(user, repo, headers, sha=None) -> int:
     """
     Retrieves the number of commits in a github repository. 
     Returns integer of the number of commits
@@ -143,17 +164,26 @@ def retrieve_num_commits(user, repo, headers) -> int:
         user(str): github username
         repo(str): name of repo to retrieve meta data from
         headers(dict): header to attach to the request
+        sha(str): sha of branch to retrieve number of commits of
 
     Returns:
         integer of the number of commits
     """
 
-    commit_url = "https://api.github.com/repos/{}/{}/stats/commit_activity".format(user,repo)
+    _url = "https://api.github.com/repos/{}/{}/commits?per_page=1&page=1"
+    commit_url = _url.format(user,repo)
+    if sha:
+        _url = _url + "&sha={}"
+        commit_url = _url.format(user,repo,sha)
     try:
-        commits = send_get_req(_url=commit_url, _header=headers)[0].json()
+        resp = send_get_req(_url=commit_url, _header=headers)[0]
+        commits = resp.headers["link"].split(',')[1].split("=")[2][:-6]
+
+        if sha:
+            commits = resp.headers["link"].split(',')[1].split("=")[2][:-4]
     
         # retrieve and return the total number of commits
-        return sum([c["total"] for c in commits])
+        return int(commits)
     except:
         return None
     
@@ -233,7 +263,7 @@ def retrieve_views_details(user, repo, headers) -> dict:
 
 
 
-def retrieve_repo_meta(resp_json, headers, user) -> dict:
+def retrieve_repo_meta(resp_json, headers, user, branch) -> dict:
     """
     Retrieves repo meta data from response json and returns a dictionary of the details
 
@@ -241,6 +271,7 @@ def retrieve_repo_meta(resp_json, headers, user) -> dict:
         resp_json(json): url to send the request to
         headers(dict): header to attach to the request
         user(str): github username
+        branch(str): name of branch to retrieve sha of
 
     Returns:
         dictionary of the details
@@ -254,8 +285,16 @@ def retrieve_repo_meta(resp_json, headers, user) -> dict:
         # Retrieve branches details
         dt[repo]["branches"] = retrieve_num_branches(user, repo, headers)
 
-        # Retrieve commit activity details
-        dt[repo]["total_commits"] = retrieve_num_commits(user, repo, headers)
+        # Retrieve branch sha
+        if branch:
+            branch_sha = retrieve_branch_sha(user, repo, headers, branch)
+
+            # Retrieve commit activity details
+            dt[repo]["total_commits"] = retrieve_num_commits(user, repo, headers, sha=branch_sha)
+
+        else:
+            # Retrieve commit activity details
+            dt[repo]["total_commits"] = retrieve_num_commits(user, repo, headers)
 
         # Retrieve contributors details
         dt[repo]["contributors"] = retrieve_contributors(user, repo, headers)
@@ -336,10 +375,10 @@ def retriev_files(path, file_ext) -> list:
     """
     r_list = [(os.path.join(root, fn), os.path.join(root, "changed_"+fn)) 
             for root, _, files in os.walk(path, topdown=False) 
-            if not root.startswith("__") and not root.startswith("..") 
+            if not root.startswith("__") and not root.startswith("..")
             for fn in files for ext in file_ext if fn.endswith(ext)]
 
-    filter_list = ["lib","bin","etc", "include", "share", "var", "lib64", "venv"]
+    filter_list = ["lib","bin","etc", "include", "share", "var", "lib64", "venv", ".ipynb_checkpoints"]
     take_out = []
     for root in filter_list:
         for tup in r_list:
@@ -487,6 +526,23 @@ def clone_repo(clone_url, repo_path) -> tuple:
     """
     # run cmd process to clone repo
     stdout, stderr, return_code = run_cmd_process(cmd_list = ["git", "clone", clone_url, repo_path])
+
+    return stderr, return_code
+
+
+def check_out_branch(branch_name) -> tuple:
+    """
+    Runs a sub process to checkout a branch given the branch name.
+    Returns the stderr and return code of the sub process.
+
+    Args:
+        branch_name(str): the name of the branch to checkout
+
+    Returns:
+        the stderr and return code of the sub process.
+    """
+    # run cmd process to clone repo
+    stdout, stderr, return_code = run_cmd_process(cmd_list = ["git", "checkout", branch_name])
 
     return stderr, return_code
 
@@ -703,18 +759,21 @@ def convert_nb_to_py(path_list):
     return out_dict
 
 
-def run_to_get_adds_and_save_content(repo_name, repo_dict, file_ext, path="./") -> tuple:
+def run_to_get_adds_and_save_content(user, repo_name, repo_dict, file_ext, branch, token, path="./") -> tuple:
     """
     Abstract a processes involved from cloning and retrieving of commit shas to comparing changes that has occured between
-    the first and current commits.
-    Returns a tuple of stderr, return_code of the cloning process, additions_dict and files
+    the first and current commits as well as retrieval of commit history on a given branch.
+    Returns a tuple of stderr, return_code of the cloning process, additions_dict, files, file_check_results, commit_history_dict, converted_nbs
 
     Args:
+        user(str): The user name of the github repository.
         repo_name(str): the name of the repository to be used for naming the directory
         repo_dict(dict): dictionary of metadata returned as a response to a request to get metadata on repositoy
         path(str): path to the directory where search is to be done recursively, default = "./"
         file_ext(lst): file extention of files to look for with the "." included
                         example ".py"
+        branch(str): the branch to be used for the analysis
+        token(str): the github token to be used for the analysis
 
     Returns:
         A tuple of stderr, return_code of the cloning process, additions_dict and files
@@ -731,6 +790,26 @@ def run_to_get_adds_and_save_content(repo_name, repo_dict, file_ext, path="./") 
         # change working directory to cloned reository
         os.chdir(repo_path)
 
+        default_branch = None
+
+        github_dict = {"owner":user, "repo":repo_name, "token":token}
+
+        # checkout to branch
+        if branch:
+            default_branch = get_git_branch()
+            stderr, return_code =  check_out_branch(branch_name=branch)
+
+            # retrive commit history
+            branch_dict = {"default":default_branch, "branch":branch}
+            ret_commit = Retrieve_Commit_History(github_dict=github_dict, branch_dict=branch_dict)
+        else:
+            # retrieve commit history
+            default_branch = get_git_branch()
+            branch_dict = {"default":default_branch, "branch":default_branch}
+            ret_commit = Retrieve_Commit_History(github_dict=github_dict, branch_dict=branch_dict)
+        
+        commit_history_dict = ret_commit.get_commit_history_and_contributors()
+
         # check for the existence of files with the given file extension
         exclude_list=[".git", ".ipynb_checkpoints", "__pycache__", "node_modules"]
         file_extensions=["py","js","ipynb"]
@@ -742,26 +821,88 @@ def run_to_get_adds_and_save_content(repo_name, repo_dict, file_ext, path="./") 
         # retrieve jupyter notebook paths
         nb_paths_list = [tup[0] for tup in retriev_files(path=path, file_ext=[".ipynb"])]
 
+        converted_nbs = []
+
         # convert jupyter notebook to python scripts
         if file_check_results["num_ipynb"] > 0:
             print("Converting notebooks to python scripts...")
-            _cnvt = convert_nb_to_py(path_list=nb_paths_list)
+            converted_nbs = convert_nb_to_py(path_list=nb_paths_list)["success"]
         
         #run_cmd_process(cmd_list=["git", "add", "*"])
         #run_cmd_process(cmd_list=["git", "commit", "-m", "converted jupyter notebooks to python scripts"])
 
         # rerieve language files
         files = retriev_files(file_ext=file_ext, path=path)
+        
+
+        # if branch and default_branch != branch:
+        #     commit_sha = [retrieve_init_last_commit_sha(run_cmd_process(cmd_list=["git", "log", "{}..{}".format(default_branch,branch), "--follow", tup[0]])[0])
+        #                 for tup in files]
+        # else:
+        #     commit_sha = [retrieve_init_last_commit_sha(run_cmd_process(cmd_list=["git", "log", "--follow", tup[0]])[0])
+        #                 for tup in files]
 
         commit_sha = [retrieve_init_last_commit_sha(run_cmd_process(cmd_list=["git", "log", "--follow", tup[0]])[0])
                         for tup in files]
 
         additions_dict = get_additions_and_save_contents(files, commit_sha)
 
-        return stderr, return_code, additions_dict, files, file_check_results
+        return stderr, return_code, additions_dict, files, file_check_results, commit_history_dict, converted_nbs
 
     else:
-        return stderr, return_code, dict(), list(), dict()
+        return stderr, return_code, dict(), list(), dict(), dict(), list()
+
+
+def get_commit_hist(repo_name, user, token, repo_dict, branch=None) -> dict:
+    """
+    Retrieve commit history on a given branch.
+
+    Args:
+        repo_name(str): the name of the repository to be used for naming the directory
+        user(str): The user name of the github repository.
+        token(str): the github token to be used for the analysis
+        repo_dict(dict): dictionary of metadata returned as a response to a request to get metadata on repository
+        branch(str): the branch to be used for the analysis
+
+    Returns:
+        A dictionary of commit history on a given branch
+
+    """
+    # dir for named repo
+    repo_path = create_repo_dir(repo_name)
+
+    # clone repo
+    stderr, return_code = clone_repo(repo_path=repo_path, clone_url=repo_dict["clone_url"])
+   
+    # if there is no error
+    if return_code == 0:
+
+        # change working directory to cloned reository
+        os.chdir(repo_path)
+
+        default_branch = None
+
+        github_dict = {"owner":user, "repo":repo_name, "token":token}
+
+        # checkout to branch
+        if branch:
+            default_branch = get_git_branch()
+            stderr, return_code =  check_out_branch(branch_name=branch)
+
+            # retrive commit history
+            branch_dict = {"default":default_branch, "branch":branch}
+            ret_commit = Retrieve_Commit_History(github_dict=github_dict, branch_dict=branch_dict)
+        else:
+            # retrieve commit history
+            default_branch = get_git_branch()
+            branch_dict = {"default":default_branch, "branch":default_branch}
+            ret_commit = Retrieve_Commit_History(github_dict=github_dict, branch_dict=branch_dict)
+        
+        commit_history_dict = ret_commit.get_commit_history_and_contributors()
+        return commit_history_dict
+    
+    else:
+        return dict()
 
 
 
@@ -883,7 +1024,7 @@ def get_file_level_summary(analysis_results, additions_dict):
     
     
     for f in additions_dict:
-        if f not in file_level.keys():
+        if f[2:] not in file_level.keys():
             file_level[f] = dict()
             file_level[f]["additions"] = additions_dict[f]
             file_level[f]["cc"] = None
@@ -900,6 +1041,124 @@ def get_file_level_summary(analysis_results, additions_dict):
             file_level[f].update(halstead)
     
     return file_level
+
+
+def get_filtered_file_level(file_paths, converted_nbs, file_level_analysis) -> list:
+    """
+    Filters the file level analysis results to only include the files in the file_paths list
+
+    Args:
+        file_paths (list): A list of file paths to be included in the filtered results
+        converted_nbs (list): A list of file paths to converted notebook files
+        file_level_analysis (dict): The file level analysis results
+
+    Returns:
+        A list of dictionaries of filtered file level analysis results
+    """
+    fltd = []
+    for f in file_paths:
+        files_dict = {}
+        f_nb = f.split(".")[0] + ".ipynb"
+        if f in file_level_analysis.keys():
+            if "./" + f_nb in converted_nbs:
+                f_name = f_nb
+            else:
+                f_name = f
+        
+            files_dict["file_name"] = f_name
+            files_dict.update(file_level_analysis[f])
+            fltd.append(files_dict)
+        
+    return fltd
+
+
+
+def categorize_file_level_metrics(file_level_analysis, important_metrics_list, metrics_descriptions_dict):
+    """
+    Categorizes the file level analysis results into important and other metrics
+
+    Args:
+        file_level_analysis (dict): The file level analysis results
+        important_metrics_list (list): A list of important metrics
+        metrics_descriptions_dict (dict): A dictionary of metric descriptions
+
+    Returns:
+        A list of dictionaries of categorized file level analysis results
+    """
+    categorized = []
+    for dict in file_level_analysis:
+        files_dict = {"file_name": dict["file_name"]}
+        metrics = list(dict.keys())
+        metrics.remove("file_name")
+        
+        files_dict["important_metrics"] = []
+        files_dict["other_metrics"] = []
+        
+        for m,v in dict.items():
+
+            if m in metrics_descriptions_dict.keys():
+                 des = metrics_descriptions_dict[m]
+
+            if isinstance(v, float):
+                v = round(v, 2)
+            
+            if m in metrics:
+                val_dict = {"name": des, "value": v}
+                if  m in important_metrics_list:
+
+                    files_dict["important_metrics"].append(val_dict)
+                else:
+                    files_dict["other_metrics"].append(val_dict)
+        categorized.append(files_dict)
+    
+    return categorized
+
+
+metrics_descriptions_dict = {
+                "additions": "added lines of code",
+                "avg_lines_per_class": "average lines of code per class",
+                "avg_lines_per_function": "average lines of code per function",
+                "avg_lines_per_method": "average lines of code per method",
+                "blank": "blank lines",
+                "cc": "cyclomatic complexity score",
+                "cc_rank": "cyclomatic complexity rank",
+                "comments": "lines of comments",
+                "difficulty": "quantified level of difficulty in writing the code",
+                "effort": "quantified effort invested in writing the codes",
+                "lloc": "logical lines of code",
+                "loc": "lines of code",
+                "mi": "maintainability index score",
+                "mi_rank": "maintainability index rank",
+                "multi": "multi-line comments",
+                "num_classes": "number of classes",
+                "num_functions": "number of functions",
+                "num_methods": "number of methods",
+                "single_comments": "single-line comments",
+                "sloc": "source lines of code",
+                "time": "quantified time spent in writing the code",
+            }
+
+important_metrics_list=["loc", "num_functions", "num_classes", "num_methods"]
+
+def get_categorized_file_level(file_paths, converted_nbs, file_level_analysis, important_metrics_list=important_metrics_list, metrics_descriptions_dict=metrics_descriptions_dict) -> list:
+    """
+    Categorizes the file level analysis results into important and other metrics
+
+    Args:
+        file_paths (list): A list of file paths to be included in the filtered results
+        converted_nbs (list): A list of file paths to converted notebook files
+        file_level_analysis (dict): The file level analysis results
+        important_metrics_list (list): A list of important metrics, default is ["loc", "num_functions", "num_classes", "num_methods"]
+        metrics_description_dict (dict): A dictionary of metric descriptions, default is {"additions": "added lines of code", "avg_lines_per_class": "average lines of code per class", "avg_lines_per_function": "average lines of code per function", "avg_lines_per_method": "average lines of code per method", "blank": "blank lines", "cc": "cyclomatic complexity score", "cc_rank": "cyclomatic complexity rank", "comments": "lines of comments", "difficulty": "quantified level of difficulty in writing the code", "effort": "quantified effort invested in writing the codes", "lloc": "logical lines of code", "loc": "lines of code", "mi": "maintainability index score", "mi_rank": "maintainability index rank", "multi": "multi-line comments", "num_classes": "number of classes", "num_functions": "number of functions", "num_methods": "number of methods", "single_comments": "single-line comments", "sloc": "source lines of code", "time": "quantified time spent in writing the code"}
+
+    Returns:
+        A list of dictionaries of categorized file level analysis results
+    """
+    fltd = get_filtered_file_level(file_paths, converted_nbs, file_level_analysis)
+    categorized = categorize_file_level_metrics(fltd, important_metrics_list, metrics_descriptions_dict)
+    return categorized
+
+
 
 
 
@@ -922,8 +1181,10 @@ def get_js_cc_summary(analysis_results, cc_key):
 
 def get_repo_level_summary(files, file_level):
     commulative_keys = ["blank","comments","lloc","loc","multi","single_comments","sloc","additions","num_functions","num_classes","num_methods","difficulty", "effort", "time"]
-                
-    repo_summary = {k:[] for k in file_level[list(file_level.keys())[0]].keys() if not k.endswith("_rank")}
+    f_level_keys = list(file_level.keys())
+    
+    
+    repo_summary = {k:[] for k in file_level[f_level_keys[0]].keys() if not k.endswith("_rank")}
     for k in repo_summary.keys():
         for f in file_level:
             if not f.__contains__("changed_") and k in file_level[f].keys():
@@ -941,6 +1202,12 @@ def get_repo_level_summary(files, file_level):
         repo_summary["mi_rank"] = mi_rank(repo_summary["mi"])
     except:
         repo_summary["mi_rank"] = None
+
+    try:
+        del repo_summary["error"]
+    except:
+        pass
+    
     
     return repo_summary
 
@@ -966,3 +1233,89 @@ def get_jsrepo_level_summary(files, file_level):
     repo_summary["cc_rank"] = cc_rank(repo_summary["cc"])
 
     return repo_summary
+
+
+def get_git_branch():
+    """
+    Returns the current git branch
+    """
+    #get branch name
+    stdout, stderr, return_code = run_cmd_process(cmd_list=['git', 'branch'])
+    if return_code == 0:
+        branch = [a for a in stdout.split('\n') if a.find('*') >= 0][0]
+        branch = branch.replace('*', '').strip()
+    else:
+        branch = None
+    return branch
+
+
+def get_recent_commit_stamp() -> dict:
+    """
+    Returns a dictionary of the most recent commit shas and the timestamp of the most recent commit
+
+    Args:
+        None
+
+    Returns:
+        A dictionary of the most recent commit shas and the timestamp of the most recent commit
+    """
+    stdout, stderr, return_code = run_cmd_process(cmd_list = ['git', 'log', '-n', '1', '--pretty=format:%H/%ct/%aN/%s'])
+    if return_code == 0:
+        lines = stdout.split("\n")
+        if len(lines) == 1:
+            details = lines[0].split("/")
+
+            #get branch name
+            branch = get_git_branch()
+            return {"branch": branch, "commit_sha": details[0], "commit_ts": details[1], "author": details[2], "message": details[3]}
+        else:
+            return  {"branch": "", "commit_sha": "", "commit_stamp": "", "author": "", "message": ""}
+    else:
+        return {"error": stderr}
+
+
+def retrieve_commits(repo_dict, repo_name, user, branch, token) -> dict:
+    """
+    Retrieves the commits for a given repo and branch
+
+    Args:
+        user(str): The user name of the github repository.
+        repo_name(str): the name of the repository to be used for naming the directory
+        repo_dict(dict): dictionary of metadata returned as a response to a request to get metadata on repositoy
+        branch(str): the branch to be used for the analysis
+        token(str): the github token to be used for the analysis
+
+        Returns:
+            A dictionary of the commits for the given repo and branch
+    """
+    # dir for named repo
+    repo_path = create_repo_dir(repo_name)
+
+    # clone repo
+    stderr, return_code = clone_repo(repo_path=repo_path, clone_url=repo_dict["clone_url"])
+   
+    # if there is no error
+    if return_code == 0:
+
+        # change working directory to cloned reository
+        os.chdir(repo_path)
+
+        default_branch = None
+
+        github_dict = {"owner":user, "repo":repo_name, "token":token}
+
+        # checkout to branch
+        if branch:
+            default_branch = get_git_branch()
+            stderr, return_code =  check_out_branch(branch_name=branch)
+
+            # retrive commit history
+            branch_dict = {"default":default_branch, "branch":branch}
+            ret_commit = Retrieve_Commit_History(github_dict=github_dict, branch_dict=branch_dict)
+        else:
+            # retrieve commit history
+            ret_commit = Retrieve_Commit_History(github_dict=github_dict)
+        
+        commit_history_dict = ret_commit.get_commit_history_and_contributors()
+
+        return commit_history_dict

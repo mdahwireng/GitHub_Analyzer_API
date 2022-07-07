@@ -5,7 +5,8 @@ import time
 import os
 import sys
 
-from app import get_user, single_repos_meta_single_repos_pyanalysis
+from app import get_user, retrieve_commit_history, single_repos_meta_single_repos_pyanalysis
+from modules.graphql import GraphQLClient
 
 github_token = None
 
@@ -243,31 +244,42 @@ def get_metric_category(val, break_points, reverse=False)->str:
     if int(val) == -999 or float(val) == -999.0:
         return "N/A"
     if sum(break_points) == 0:
-        return "top 25%"
-    if reverse:
-        if val < break_points[0]:
-            return "top 25%"
-
-        elif val < break_points[1]:
-            return "top 50%"
-
-        elif val < break_points[2]:
-            return "top 75%"
-
-        else:
-            return "bottom 25%"
-    else:
-        if val < break_points[0]:
-            return "bottom 25%"
+        return "bottom 50%"
     
-        elif val < break_points[1]:
-            return "top 75%"
+    if val == 0:
+        return "bottom 50%"
+    
+    if reverse:
+        if val <= break_points[0]:
+            return "top 1%"
 
-        elif val < break_points[2]:
+        elif val <= break_points[1]:
+            return "top 10%"
+
+        elif val <= break_points[2]:
+            return "top 25%"
+
+        elif val <= break_points[3]:
             return "top 50%"
 
         else:
+            return "bottom 50%"
+    
+    else:
+        if val >= break_points[0]:
+            return "top 1%"
+
+        elif val >= break_points[1]:
+            return "top 10%"
+
+        elif val >= break_points[2]:
             return "top 25%"
+
+        elif val >= break_points[3]:
+            return "top 50%"
+
+        else:
+            return "bottom 50%"
 
 
 
@@ -406,28 +418,49 @@ def get_df(week, _dict)-> pd.DataFrame:
 
 
 
-def get_break_points(_min,_max, num_cat=4)->list:
+def get_break_points(series, cat_list=[0.99, 0.9, 0.75, 0.5], reverse=False, _add=False)->tuple:
     """
     Gets the break points for the given min and max values.
     Returns the break points.
 
         Args:
-            _min (int): The min value.
-            _max (int): The max value.
-            num_cat (int): The number of categories.
+            series (pandas series): The values to calculate breakpoints, min, max and sum from.
+            cat_list (list): The deciles to be used to calculate the breakpoints 
+            reverse (bool): The reverse flag
+            _add (bool): The flag to indicate if the sum should be calculated
 
         Returns:
-            list: The break points.
+            tuple: break_points, _min, _max, _sum if _add is true else break_points, _min, _max
     """
-    div = (_max  - _min)/num_cat
+    # find the reverse for values which best when less
+    if reverse:
+        cat_list = [1-bp for bp in cat_list]
+
+    _min = float(series.min())
+    _max = float(series.max())
+    
+    div = _max  - _min
+
     if div == 0:
-        return [0 for i in range(num_cat)]
-    return [_min + (i*div) for i in range(1,num_cat)]
+        break_points = [0 for i in range(len(cat_list))]
+    else:
+        #break_points = list(series.quantile(cat_list).values)
+        break_points = series.quantile(cat_list, interpolation='lower').to_list()
+
+        #print(f"\n\n###################{break_points}###################\n\n")
+
+    if _add:
+        _sum = float(series.sum())
+
+        return break_points, _min, _max, _sum
+    
+    else:
+
+        return break_points, _min, _max
+
 
 # get repo meta data and analysis data
-            
-
-def get_repo_meta_pyanalysis(user, github_token, repo_name)->dict:
+def get_repo_meta_pyanalysis(user, github_token, repo_name, branch)->dict:
     """
     Gets the repo meta data and analysis data.
     Returns the repo meta data and analysis data.
@@ -440,11 +473,12 @@ def get_repo_meta_pyanalysis(user, github_token, repo_name)->dict:
     Returns:
         dict: The repo meta data and analysis data.
     """
-    repo_meta_repo_pyanalysis = single_repos_meta_single_repos_pyanalysis(user, github_token, repo_name, api=False)
+    repo_meta_repo_pyanalysis = single_repos_meta_single_repos_pyanalysis(user, github_token, repo_name, branch, api=False)
 
     hld = dict()
     try:
-        hld["repo_meta"] = repo_meta_repo_pyanalysis["repo_meta"][repo_name]
+        real_repo_name = [name for name in repo_meta_repo_pyanalysis["repo_meta"] if repo_name.lower() == name.lower()]
+        hld["repo_meta"] = repo_meta_repo_pyanalysis["repo_meta"][real_repo_name[0]]
 
     except:
         hld["repo_meta"] = repo_meta_repo_pyanalysis["repo_meta"]
@@ -453,6 +487,8 @@ def get_repo_meta_pyanalysis(user, github_token, repo_name)->dict:
         hld["repo_anlysis_metrics"] = repo_meta_repo_pyanalysis["analysis_results"]["repo_summary"]
     except:
         hld["repo_anlysis_metrics"] = repo_meta_repo_pyanalysis["analysis_results"]
+
+    hld["commit_history"] = repo_meta_repo_pyanalysis["commit_history"]
 
     return hld
 
@@ -475,3 +511,56 @@ def normalize_repo_data(data_dict, starter_code_ref_basevalues)->dict:
              for k in data_dict
              }
     return _dict
+
+
+
+def get_commit_history(user, github_token, repo_name, branch)->dict:
+    """
+    Gets the commit history.
+    Returns the commit history.
+
+    Args:
+        user (str): The user.
+        github_token (str): The github token.
+        repo_name (str): The repo name.
+        branch (str): The branch.
+
+    Returns:
+        dict: The commit history.
+    """
+    commit_history = retrieve_commit_history(user, github_token, repo_name, branch, api=False)
+
+    return commit_history
+
+
+
+
+
+
+def send_graphql_query(client_url, query, variables=None, token=None)->dict:
+    """
+    Sends the graphql query.
+    Returns the response.
+
+    Args:
+        client_url (str): The client url.
+        query (str): The query.
+        variables (dict): The variables.
+        token (str): The authorization token.
+
+    Returns:
+        dict: The response.
+    """
+    token = "Bearer " + token if token else None
+    try:
+        client = GraphQLClient(client_url)
+        if token:
+            client.inject_token(token)
+
+        resp = client.execute(query, variables=variables)
+
+        return resp
+    
+    except Exception as e:
+        
+        return {"error": repr(e)}
