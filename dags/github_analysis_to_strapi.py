@@ -4,14 +4,15 @@ import sys
 from airflow import DAG
 from airflow.operators.python import PythonOperator, BranchPythonOperator
 
-from modules.air_flow_utls import check_assignment_data, check_state_vars, check_strapi_github_token, exit_with_error_all_none, exit_with_error_assignment_data, exit_with_error_github_token, exit_with_error_state_vars, exit_with_error_strapi_token, get_assignment_data, get_client_url, get_github_token, get_state_vars, get_strapi_token, get_training_week, get_transformed_assignment_data, retrieve_state, set_platform, set_run_number, set_week_submission_data_save_path, upload_analysis_to_strapi
-
-
-
 curdir = os.path.dirname(os.path.realpath(__file__))
 cpath = os.path.dirname(curdir)
 if not cpath in sys.path:
     sys.path.append(cpath)
+
+
+
+from modules.air_flow_utls import check_assignment_data, check_state_vars, check_strapi_github_token, exit_with_error_all_none, exit_with_error_assignment_data, exit_with_error_github_token, exit_with_error_state_vars, exit_with_error_strapi_token, get_assignment_data, get_client_url, get_github_token, get_state_vars, get_strapi_token, get_training_week, retrieve_state, set_platform, set_run_number, update_state_dict, upload_analysis_to_strapi
+
 
 
 
@@ -88,6 +89,11 @@ with DAG("github_analysis_to_strapi", # Dag id
             python_callable=exit_with_error_state_vars
         )
 
+        set_run_number_ = PythonOperator(
+            task_id="set_run_number_",
+            python_callable=set_run_number
+        )
+
         get_training_week_ = PythonOperator(
             task_id="get_training_week_",
             python_callable=get_training_week
@@ -113,24 +119,14 @@ with DAG("github_analysis_to_strapi", # Dag id
             python_callable=exit_with_error_assignment_data
         )
 
-        set_run_number_ = PythonOperator(
-            task_id="set_run_number_",
-            python_callable=set_run_number
-        )
-
-        set_week_submission_data_save_path_ = PythonOperator(
-            task_id="set_week_submission_data_save_path_",
-            python_callable=set_week_submission_data_save_path
-        )
-
-        get_transformed_assignment_data_ = PythonOperator(
-            task_id="get_transformed_assignment_data_",
-            python_callable=get_transformed_assignment_data
-        )
-
         upload_analysis_to_strapi_ = PythonOperator(
             task_id="upload_analysis_to_strapi_",
             python_callable=upload_analysis_to_strapi
+        )
+
+        update_state_dict_ = PythonOperator(
+            task_id="update_state_dict_",
+            python_callable=update_state_dict
         )
 
 
@@ -139,5 +135,5 @@ with DAG("github_analysis_to_strapi", # Dag id
         
         check_strapi_github_token_ >> retrieve_state_ >> get_state_vars_ >> check_state_vars_ >> exit_with_error_state_vars_
         
-        check_state_vars_>> [get_training_week_, get_client_url_] >> get_assignment_data_ >> check_assignment_data_ >> exit_with_error_assignment_data_ 
-        check_assignment_data_ >> set_run_number_ >> set_week_submission_data_save_path_ >> get_transformed_assignment_data_ >> upload_analysis_to_strapi_
+        check_state_vars_ >> set_run_number_ >> get_training_week_ >> get_client_url_ >> get_assignment_data_ >> check_assignment_data_ >> exit_with_error_assignment_data_ 
+        check_assignment_data_  >> upload_analysis_to_strapi_ >> update_state_dict_

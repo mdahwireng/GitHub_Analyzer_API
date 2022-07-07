@@ -1,8 +1,10 @@
+from ast import literal_eval
 from datetime import datetime
 import json
 import os
 import pickle
 import sys
+import numpy as np
 
 import pandas as pd
 from modules.Load_to_starpi import Load_To_Strapi
@@ -47,6 +49,41 @@ def exit_with_error(error_message)->None:
     """
     print(error_message)
     sys.exit(1)
+
+
+
+def set_week_submission_data_save_path(week, run_number, platform, batch):
+    """
+    Set week submission data save path
+    
+    Args:
+        ti (TaskInstance): TaskInstance object
+        
+    Returns:
+        None
+    """
+    week_submission_dir = "data/week_data/batch{}/{}/{}/run{}".format(batch, week, platform, run_number)
+    week_submission_path = week_submission_dir + "/b{}_{}_{}_run{}.csv".format(batch, week, platform, run_number)
+    
+    if not os.path.isdir(week_submission_dir):
+        os.makedirs(week_submission_dir)
+    
+    return week_submission_path
+
+
+def save_week_submission_data(assignment_data_df, week_submission_path, run_number):
+    prep_assn = PrepareAssignmentDf(assignment_data_df, run_number, "root_url")
+    github_df = prep_assn.get_df(week_submission_path)
+
+
+def check_assignment_data_internal(assignment_data_df, week, run_number, platform, batch):
+    if isinstance(assignment_data_df, pd.DataFrame) and assignment_data_df.empty is False:
+        week_submission_path = set_week_submission_data_save_path(week, run_number, platform, batch)
+        save_week_submission_data(assignment_data_df, week_submission_path, run_number)
+        return {"check": "pass", "save_path": week_submission_path}
+   
+    else:
+        return {"check": "fail", "save_path": ""}
     
 
 
@@ -76,7 +113,7 @@ def retrieve_state(ti, state_path = "data/api_state/week/week_state.pk")->dict:
             state_dict = None
             return state_dict
         platform = ti.xcom_pull(task_ids="set_platform_")
-        analyzed_assgnmt = state_dict["analyzed_assignments"]
+        analyzed_assgnmt = state_dict["previously_analyzed_assignments"]
         batch = state_dict["batch"]
         run_number = state_dict["run_number"]
         base_url = state_dict["base_url"][platform]
@@ -138,7 +175,7 @@ def exit_with_error_github_token(error_message="Error: github token was not retu
 
 
 
-def set_platform(ti, platform="dev")->None:
+def set_platform(ti, platform="stage")->None:
     """
     Sets the platform
     
@@ -212,7 +249,7 @@ def check_strapi_github_token(ti)->None:
             return "exit_with_error_strapi_token_"
 
     else:
-        "retrieve_state_"
+        return "retrieve_state_"
 
 
 def get_state_vars(ti)->dict:
@@ -227,7 +264,7 @@ def get_state_vars(ti)->dict:
     """
     try:
         state_dict = ti.xcom_pull(task_ids="retrieve_state_")
-        analyzed_assgnmt = state_dict["analyzed_assignments"]
+        analyzed_assgnmt = state_dict["previously_analyzed_assignments"]
         batch = state_dict["batch"]
         run_number = state_dict["run_number"]
         return dict()
@@ -249,7 +286,7 @@ def check_state_vars(ti):
         exit_with_error(error_message=state_dict["error"])
         return "exit_with_error_state_vars_"
     else:
-        return "get_training_week_"
+        return "set_run_number_"
 
 
 def exit_with_error_state_vars(ti)->None:
@@ -314,33 +351,34 @@ def get_assignment_data(ti):
     base_url = ti.xcom_pull(task_ids="retrieve_state_")["base_url"][platform]
     strapi_token = ti.xcom_pull(task_ids="get_strapi_token_")
     batch = ti.xcom_pull(task_ids="retrieve_state_")["batch"]
-    previous_analyzed_assignments = ti.xcom_pull(task_ids="retrieve_state_")["analyzed_assignments"]
+    previous_analyzed_assignments = ti.xcom_pull(task_ids="retrieve_state_")["previously_analyzed_assignments"]
+    run_number = ti.xcom_pull(task_ids="set_run_number_")
 
     assgn = Get_Assignment_Data(week, batch, base_url, strapi_token, previous_analyzed_assignments)
 
-    assignmnent_data_df = assgn.filtered_data_df()
+    assignment_data_df = assgn.filtered_data_df()
     analyzed_assignments = assgn.get_analyzed_assignments()
+    assignment_data_check = check_assignment_data_internal(assignment_data_df, week, run_number, platform, batch)
 
-    assignment_data = {"filtered_data": assignmnent_data_df, "analyzed_assignments": analyzed_assignments}
+    assignment_data = {"check": assignment_data_check["check"], "save_path": assignment_data_check["save_path"], "analyzed_assignments": analyzed_assignments}
     return assignment_data
 
 
 def check_assignment_data(ti):
     """
-    Checks if the assignment data is a dataframe and is not empty
-    
+    Checks if the assignment data has passed the checks
+
     Args:
         ti (TaskInstance): TaskInstance object
-        
+
     Returns:
         task id of the next task (str)
     """
-    assignment_data = ti.xcom_pull(task_ids="get_assignment_data_")["filtered_data"]
-    if isinstance(assignment_data, pd.DataFrame) and assignment_data.empty is False:
-        return "get_assignment_data_"
+    check = ti.xcom_pull(task_ids="get_assignment_data_")["check"]
+    if check:
+        return "upload_analysis_to_strapi_"
     else:
         return "exit_with_error_assignment_data_"
-
 
 def exit_with_error_assignment_data(ti):
     """
@@ -370,47 +408,6 @@ def set_run_number(ti):
     run_number = "b{}_r{}".format(batch, state_run_number)
     return run_number   
 
-def set_week_submission_data_save_path(ti):
-    """
-    Sets the week submission data save path
-    
-    Args:
-        ti (TaskInstance): TaskInstance object
-        
-    Returns:
-        week submission data save path (str)
-    """
-    week = ti.xcom_pull(task_ids="get_training_week_")["week"]
-    run_number = ti.xcom_pull(task_ids="set_run_number_")
-    platform = ti.xcom_pull(task_ids="set_platform_")
-    batch = ti.xcom_pull(task_ids="retrieve_state_")["batch"]
-    
-    week_submission_dir = "data/week_data/batch{}/{}/{}/run{}".format(batch, week, platform, run_number)
-    week_submission_path = week_submission_dir + "/b{}_{}_{}_run{}.csv".format(batch, week, platform, run_number)
-    
-    if not os.path.isdir(week_submission_dir):
-        os.makedirs(week_submission_dir)
-
-    return week_submission_path
-
-
-def get_transformed_assignment_data(ti):
-    """
-    Gets the transformed assignment data
-    
-    Args:
-        ti (TaskInstance): TaskInstance object
-        
-    Returns:
-        transformed assignment data (pd.DataFrame)
-    """
-    week_submission_path = ti.xcom_pull(task_ids="set_week_submission_data_save_path_")
-    assignment_data_df = ti.xcom_pull(task_ids="get_assignment_data_")["filtered_data"]
-    run_number = ti.xcom_pull(task_ids="set_run_number_")
-    prep_assn = PrepareAssignmentDf(assignment_data_df, run_number, "root_url")
-    github_df = prep_assn.get_df(week_submission_path)
-
-    return github_df
 
 
 def upload_analysis_to_strapi(ti):
@@ -428,7 +425,13 @@ def upload_analysis_to_strapi(ti):
     batch = ti.xcom_pull(task_ids="retrieve_state_")["batch"]
     run_number = ti.xcom_pull(task_ids="set_run_number_")
     strapi_token = ti.xcom_pull(task_ids="get_strapi_token_")
-    github_df = ti.xcom_pull(task_ids="get_transformed_assignment_data_")
+   
+    week_submission_path = ti.xcom_pull(task_ids="get_assignment_data_")["save_path"]
+    github_df = pd.read_csv(week_submission_path)
+    github_df = github_df.replace({np.nan: None})
+    github_df["assignments_ids"] = github_df["assignments_ids"].apply(lambda x: literal_eval(x))
+    github_df["trainee"] = github_df["trainee"].apply(lambda x: int(x))
+    
     base_url = ti.xcom_pull(task_ids="retrieve_state_")["base_url"][platform]
     github_token = ti.xcom_pull(task_ids="get_github_token_")
     strapi_token = ti.xcom_pull(task_ids="get_strapi_token_")
@@ -437,7 +440,35 @@ def upload_analysis_to_strapi(ti):
 
     to_strapi.run_to_load()
 
+def update_state_dict(ti):
+    """
+    Updates the state variables
+    
+    Args:
+        ti (TaskInstance): TaskInstance object
+        
+    Returns:
+        None
+    """
+    analyzed_assignments = ti.xcom_pull(task_ids="get_assignment_data_")["analyzed_assignments"]
+    state_dict = ti.xcom_pull(task_ids="retrieve_state_")
+    
+    state_dict["previously_analyzed_assignments"] = analyzed_assignments
+    present_week = datetime.now().isocalendar()[1]
 
+    if present_week > state_dict["current_week"]:
+        state_dict["run_number"] = 1
+        state_dict["current_week"] = present_week
+    else:
+        state_dict["run_number"] += 1
+    
+    st_dir = "data/api_state/week"
+    if not os.path.isdir(st_dir):
+        os.makedirs(st_dir)
+
+
+    with open(st_dir + "/week_state.pk", "wb") as f:
+        pickle.dump(state_dict, f)
 
 
 
