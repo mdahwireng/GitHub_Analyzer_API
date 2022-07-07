@@ -4,13 +4,14 @@ import shutil
 import sys
 import requests
 from flask import Flask, jsonify
+from modules.Retrieve_Commit_History import Retrieve_Commit_History
 
 curdir = os.path.dirname(os.path.realpath(__file__))
 cpath = os.path.dirname(curdir)
 if not cpath in sys.path:
     sys.path.append(cpath)
 
-from modules.api_utils import add_js_additions, check_lang_exit, get_cc_summary, get_file_level_summary, get_js_cc_summary, get_jsrepo_level_summary, get_recent_commit_stamp, get_repo_level_summary, retrieve_repo_meta, run_jsanalysis, run_pyanalysis, run_to_get_adds_and_save_content, send_get_req
+from modules.api_utils import add_js_additions, check_lang_exit, get_categorized_file_level, get_cc_summary, get_commit_hist, get_file_level_summary, get_filtered_file_level, get_js_cc_summary, get_jsrepo_level_summary, get_recent_commit_stamp, get_repo_level_summary, retrieve_commits, retrieve_repo_meta, run_jsanalysis, run_pyanalysis, run_to_get_adds_and_save_content, send_get_req
 
 
 app = Flask(__name__)
@@ -292,8 +293,8 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, branch, ap
                 
                 if len(repo_details) == 0:
                     if api:
-                        return jsonify({"repo_meta":{"error":"Not Found"}, "analysis_results":{"error":"Not Found"}})
-                    return {"repo_meta":{"error":"Not Found"}, "analysis_results":{"error":"Not Found"}}
+                        return jsonify({"repo_meta":{"error":"Not Found"}, "analysis_results":{"error":"Not Found"}, "commit_history":{"error":"Not Found"}})
+                    return {"repo_meta":{"error":"Not Found"}, "analysis_results":{"error":"Not Found"}, "commit_history":{"error":"Not Found"}}
             else:
                 if api:
                     return jsonify({"repo_meta":{"error":"Not Found"}, "analysis_results":{"error":"Not Found"}}) 
@@ -306,7 +307,7 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, branch, ap
         # check if the repo contains python files
         if  check_lang_exit(user=user, repo=repo_name, headers=headers, lang_list=lang_list):
 
-            stderr, return_code, additions_dict, files, file_check_results = run_to_get_adds_and_save_content(repo_name, repo_dict=repo_details[0], file_ext=[".py", ".ipynb"], branch=branch)
+            stderr, return_code, additions_dict, files, file_check_results, commit_history_dict, converted_nbs = run_to_get_adds_and_save_content(user=user ,repo_name=repo_name, repo_dict=repo_details[0], file_ext=[".py", ".ipynb"], branch=branch, token=token)
 
             # Make languages dynamic with number of files of the language
             lang_files_pairing = {"Jupyter Notebook":"num_ipynb", "Python":"num_py", "JavaScript":"num_js"}
@@ -341,29 +342,38 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, branch, ap
                 analysis_results["file_level"] = get_file_level_summary(analysis_results, additions_dict)
                 # get aggregate values of code metrics for repo
                 analysis_results["repo_summary"] = get_repo_level_summary(files, analysis_results["file_level"])
+                # get filtered file level changes
+                file_paths = [tup[0][2:] for tup in files]
+                commit_history_dict["file_level"] = get_categorized_file_level(file_paths=file_paths, file_level_analysis=analysis_results["file_level"], converted_nbs=converted_nbs)
                 
                 # delete repository directory after checking code metrics
                 os.chdir("../../")
                 shutil.rmtree("tmp/"+repo_name)
 
                 if api:
-                    return jsonify({"repo_meta":dt, "analysis_results":analysis_results})  
-                return {"repo_meta":dt, "analysis_results":analysis_results}
+                    return jsonify({"repo_meta":dt, "analysis_results":analysis_results, "commit_history":commit_history_dict})  
+                return {"repo_meta":dt, "analysis_results":analysis_results, "commit_history":commit_history_dict}
 
             else:
                 if api:
-                    return jsonify({"repo_meta":dt, "analysis_results":{"error" : stderr}})
-                return {"repo_meta":dt, "analysis_results":{"error" : stderr}}
+                    return jsonify({"repo_meta":dt, "analysis_results":{"error" : stderr}, "commit_history":{"error" : stderr}})
+                return {"repo_meta":dt, "analysis_results":{"error" : stderr}, "commit_history":{"error" : stderr}}
 
         else:
+            commit_history_dict = get_commit_hist(user=user ,repo_name=repo_name, repo_dict=repo_details[0], branch=branch, token=token)
+            
+            # delete repository directory after retrieving commit history
+            os.chdir("../../")
+            shutil.rmtree("tmp/"+repo_name)
+
             if api:
-                return jsonify({"repo_meta":dt, "analysis_results":{"error":"repository does not contain {} files".format(lang_list)}})
-            return {"repo_meta":dt, "analysis_results":{"error":"repository does not contain {} files".format(lang_list)}}
+                return jsonify({"repo_meta":dt, "analysis_results":{"error":"repository does not contain {} files".format(lang_list)}, "commit_history":commit_history_dict})
+            return {"repo_meta":dt, "analysis_results":{"error":"repository does not contain {} files".format(lang_list)}, "commit_history":commit_history_dict}
 
     else:
         if api:
-            return jsonify({"repo_meta":{"error":resp.json()}, "analysis_results":{"error":"Not Found"}})
-        return {"repo_meta":{"error":resp.json()}, "analysis_results":{"error":"Not Found"}}
+            return jsonify({"repo_meta":{"error":resp.json()}, "analysis_results":{"error":"Not Found"}, "commit_history":{"error":"Not Found"}})
+        return {"repo_meta":{"error":resp.json()}, "analysis_results":{"error":"Not Found"}, "commit_history":{"error":"Not Found"}}
         
 
 
@@ -445,9 +455,75 @@ def get_single_repo_jsanalysis(user, token, repo_name, api=True)->json:
             return jsonify({"error":resp.json()})
         return {"error":resp.json()}
 
+
+
+@app.route('/retrieve_commit_history/<string:user>/<string:token>/<string:repo_name>/<string:branch>',methods=["GET"])
+def retrieve_commit_history(user, token, repo_name, branch, api=True)->json:
+
+    if branch == " ":
+        branch = None
+
+    # create authourization headers for get request
+    headers = {"Authorization":"Bearer {}".format(token)}
+    # send get request to github api
+    resp, resp_status_code = send_get_req(_url="https://api.github.com/search/repositories?q=repo:{}/{}".format(user,repo_name), _header=headers)
+    if resp_status_code == 200:
+        # retrive response body
+        d = resp.json()
+        
+        info_list = ["name","forks", "languages_url", "contributors_url", "branches_url", "description", "html_url"]
+        resp_dict = {repo["name"]:{k:repo[k] for k in info_list} for repo in d["items"]}
+        
+
+        if len(resp_dict) > 0:
+            repo_name = list(resp_dict.keys())[0]
+            resp_dict[repo_name]["repo_name"] = repo_name
+            if branch:
+                resp_dict[repo_name]["html_url"] = resp_dict[repo_name]["html_url"] + "/tree/" + branch
+
+        repo_details = [repo for repo in d["items"]]
+        if len(repo_details) == 0:
+            print("Using alternate method to retrieve rpository details...\n")
+            resp, resp_status_code = send_get_req(_url='https://api.github.com/repos/{}/{}'.format(user,repo_name), _header=headers)
+            if resp_status_code == 200:
+                # retrive response body
+                d = resp.json()
+                # retrieve named repo
+                #print(d)
+                # repo_details = [repo for repo in d if repo["name"]==repo_name]
+                if  d["name"].lower()==repo_name.lower():
+                    repo_details = [d]
+                else:
+                    repo_details = []
+
+                resp_dict = {d["name"]:{k:d[k] for k in info_list} for i in range(len(d)) if d["name"].lower() == repo_name.lower()}
+                if len(resp_dict) > 0:
+                    repo_name = list(resp_dict.keys())[0]
+                    resp_dict[repo_name]["repo_name"] = repo_name
+
+                if len(repo_details) == 0:
+                    if api:
+                        return jsonify({"commit_history":{"error":"Repository Not Found"}})
+                    return {"commit_history":{"error":"Repository Not Found"}}
+            
+            else:
+                if api:
+                    return jsonify({"commit_history":{"error":"Repository Not Found"}})
+                return {"commit_history":{"error":"Repository Not Found"}}
+                
+        commit_h = retrieve_commits(repo_dict=repo_details[0], repo_name=repo_name, user=user, token=token, branch=branch)
+
+        if api:
+            return jsonify({"commit_history":commit_h})
+        return {"commit_history":commit_h}
+
+    else:
+        if api:
+            return jsonify({"commit_history":{"error":resp.json()}})
+        return {"commit_history":{"error":resp.json()}}
+
+
 # run the app
-
-
 if __name__ == "__main__":
     if os.path.exists(".env/env_var.json"):
         with open(".env/env_var.json", "r") as e:

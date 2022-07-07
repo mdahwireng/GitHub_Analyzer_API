@@ -1,12 +1,12 @@
+from ast import literal_eval
 from datetime import datetime
 import json
 import os
 import sys
+import numpy as np
 import pandas as pd
 import pickle
 from modules.Load_to_starpi import Load_To_Strapi
-from modules.Prepare_Assignment_Submissions import PrepareAssignmentDf
-from modules.Treat_Assignment_Response import Get_Assignment_Data
 
 
 curdir = os.path.dirname(os.path.realpath(__file__))
@@ -14,9 +14,8 @@ cpath = os.path.dirname(curdir)
 if not cpath in sys.path:
     sys.path.append(cpath)
 
-
-  
-from modules.analyzer_utils import  get_repo_meta_pyanalysis
+ 
+from modules.analyzer_utils import get_repo_meta_pyanalysis 
 
 
 
@@ -48,7 +47,7 @@ if github_token and strapi_token:
         print("\nThe state file does not exit and system will exit now...\n")
         sys.exit(1)
 
-    current_week = datetime.now().isocalendar()[1] - 1
+    current_week = datetime.now().isocalendar()[1] - 3
     training_week = current_week - 18
     
     week= "week{}".format(training_week)
@@ -58,41 +57,25 @@ if github_token and strapi_token:
     run_number = "b{}_r{}".format(batch, state_run_number)
 
     base_url = state_dict["base_url"][platform]
-    previous_analyzed_assignments = state_dict["previously_analyzed_assignments"]
 
     client_url = base_url + "/graphql"
+
     
-    assgn = Get_Assignment_Data(week, batch, base_url, strapi_token, previous_analyzed_assignments)
+    
+    
+    error_fix_file_path = "data/error_fix/b{}_{}_run{}_error_fix.csv".format(batch, week, run_number)
+    github_df = pd.read_csv(error_fix_file_path)
+    github_df = github_df.drop_duplicates(subset=["trainee_id"])
+    github_df = github_df.replace({np.nan: None})
 
-    assignmnent_data_df = assgn.filtered_data_df()
-
-    # check if assignmnent_data_df was returned
-    if isinstance(assignmnent_data_df, pd.DataFrame) and not assignmnent_data_df.empty:
-        #trainee_df = get_id_userid_df(trainee_dict)
-
-
-
-        # read in the data
-        #dt_user = pd.read_csv("data/github_usernames.csv")
-        #dt_repo = pd.read_csv("data/github_repos_wk1.csv")
-        #github_df = dt_user.merge(dt_repo, on="trainee_id")
-        #github_df = pd.read_csv("data/try.csv")
-        #github_df = pd.read_csv("data/week_data/batch4/b4_wk{}.csv".format(training_week))
-        #github_df = pd.read_csv("data/week_data/batch5/b5_week0_github_df.csv")
-
-        #gd = gsheet(sheetid="1gtkfGAmH9HR05_i7g6t2tF9t8LHfopybIhEqYdrxCSg",fauth='gdrive_10acad_auth.json')
-        #gsheet_df = gd.get_sheet_df("b5_github_submissions")
+    github_df["assignments_ids"] = github_df["assignments_ids"].apply(lambda x: literal_eval(x))
+    github_df["trainee"] = github_df["trainee"].apply(lambda x: int(x))
 
 
-        prep_assn = PrepareAssignmentDf(assignmnent_data_df, run_number, "root_url")
+
+    # check if github_df was returned
+    if isinstance(github_df, pd.DataFrame) and not github_df.empty:
         
-        week_submission_dir = "data/week_data/batch{}/{}/{}/run{}".format(batch, week, platform, run_number)
-        week_submission_path = week_submission_dir + "/b{}_{}_{}_run{}.csv".format(batch, week, platform, run_number)
-        
-        if not os.path.isdir(week_submission_dir):
-            os.makedirs(week_submission_dir)
-
-        github_df = prep_assn.get_df(week_submission_path)
 
         starter_code_url = None #"https://github.com/10xac/Twitter-Data-Analysis"
 
@@ -143,18 +126,18 @@ if github_token and strapi_token:
             starter_code_ref_basevalues = None 
 
 
-        to_strapi = Load_To_Strapi(platform, week, batch, run_number, base_url, github_df, github_token, strapi_token)
+        to_strapi = Load_To_Strapi(platform=platform, week=week, batch=batch, run_number=run_number, base_url=base_url, github_df=github_df, github_token=github_token, strapi_token=strapi_token, run_type="fix")
 
-        to_strapi.run_to_load()  
-          
+        to_strapi.run_to_load()
+        
     else:
         # if trainee data is not returned
-        if isinstance(assignmnent_data_df, pd.DataFrame):
+        if isinstance(github_df, pd.DataFrame):
             print("No assignment data returned. Hence no entries to be made into metric rank and metric summary tables\n\n")
             sys.exit(1)
         
         else:
-            print("There was an error retrieving assignment data".format(assignmnent_data_df["error"]))
+            print("There was an error retrieving assignment data")
             sys.exit(1)
 
 else:
