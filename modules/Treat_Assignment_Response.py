@@ -220,7 +220,7 @@ class Get_Assignment_Data:
         """
         Returns a list of assignments that have been analyzed
         """
-        return self.analyzed_assignments
+        return list(self.analyzed_assignments)
 
 
 
