@@ -1,5 +1,9 @@
+from datetime import datetime
 import pickle
 import os
+
+
+current_week = datetime.now().isocalendar()[1]
 
 st_dir = "data/api_state/week"
 if not os.path.isdir(st_dir):
@@ -13,7 +17,8 @@ state_dict = {
                             "prod":"https://cms.10academy.org", 
                             "stage":"https://stage-cms.10academy.org"
                             },
-                "previously_analyzed_assignments":[]
+                "previously_analyzed_assignments":[],
+                "current_week":current_week
             }
 
 with open(st_dir + "/week_state.pk", "wb") as f:
