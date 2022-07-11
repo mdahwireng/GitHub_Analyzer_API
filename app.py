@@ -378,8 +378,8 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, branch, ap
 
 
 
-@app.route('/single_repos_jsanalysis/<string:user>/<string:token>/<string:repo_name>',methods=["GET"])
-def get_single_repo_jsanalysis(user, token, repo_name, api=True)->json:
+@app.route('/single_repos_jsanalysis/<string:user>/<string:token>/<string:repo_name>/<string:branch>',methods=["GET"])
+def get_single_repo_jsanalysis(user, token, repo_name, branch, api=True)->json:
     """
     Takes username, github generated token and name of repo and returns json of details of javascript code analysis in 
     repository
@@ -392,6 +392,9 @@ def get_single_repo_jsanalysis(user, token, repo_name, api=True)->json:
     Returns:
         json of details of python code analysis in repository 
     """
+    """if branch == " ":
+        branch = None
+
     # create authourization headers for get request
     headers = {"Authorization":"Bearer {}".format(token)}
     # send get request to github api
@@ -399,14 +402,102 @@ def get_single_repo_jsanalysis(user, token, repo_name, api=True)->json:
     if resp_status_code == 200:
         # retrive response body
         d = resp.json()
+        
+        info_list = ["name","forks", "languages_url", "contributors_url", "branches_url", "description", "html_url"]
+        resp_dict = {repo["name"]:{k:repo[k] for k in info_list} for repo in d["items"]}
+        
+
+        if len(resp_dict) > 0:
+            repo_name = list(resp_dict.keys())[0]
+            resp_dict[repo_name]["repo_name"] = repo_name
+            if branch:
+                resp_dict[repo_name]["html_url"] = resp_dict[repo_name]["html_url"] + "/tree/" + branch
+
         repo_details = [repo for repo in d["items"]]
         if len(repo_details) == 0:
-            resp, resp_status_code = send_get_req(_url='https://api.github.com/users/{}/repos'.format(user), _header=headers)
+            print("Using alternate method to retrieve rpository details...\n")
+            resp, resp_status_code = send_get_req(_url='https://api.github.com/repos/{}/{}'.format(user,repo_name), _header=headers)
             if resp_status_code == 200:
                 # retrive response body
                 d = resp.json()
                 # retrieve named repo
-                repo_details = [repo for repo in d if repo["name"]==repo_name]
+                #print(d)
+                # repo_details = [repo for repo in d if repo["name"]==repo_name]
+                if  d["name"].lower()==repo_name.lower():
+                    repo_details = [d]
+                else:
+                    repo_details = []
+
+                resp_dict = {d["name"]:{k:d[k] for k in info_list} for i in range(len(d)) if d["name"].lower() == repo_name.lower()}
+                if len(resp_dict) > 0:
+                    repo_name = list(resp_dict.keys())[0]
+                    resp_dict[repo_name]["repo_name"] = repo_name
+
+                    if branch:
+                        resp_dict[repo_name]["html_url"] = resp_dict[repo_name]["html_url"] + "/tree/" + branch
+
+
+                
+                if len(repo_details) == 0:
+                    if api:
+                        return jsonify({"repo_meta":{"error":"Not Found"}, "analysis_results":{"error":"Not Found"}, "commit_history":{"error":"Not Found"}})
+                    return {"repo_meta":{"error":"Not Found"}, "analysis_results":{"error":"Not Found"}, "commit_history":{"error":"Not Found"}}
+            else:
+                if api:
+                    return jsonify({"repo_meta":{"error":"Not Found"}, "analysis_results":{"error":"Not Found"}}) 
+                return {"repo_meta":{"error":"Not Found"}, "analysis_results":{"error":"Not Found"}}
+                
+        dt = retrieve_repo_meta(resp_json=resp_dict, headers=headers, user=user, branch=branch)
+    
+    
+    
+    """
+    
+    
+    
+    
+    # create authourization headers for get request
+    headers = {"Authorization":"Bearer {}".format(token)}
+    # send get request to github api
+    resp, resp_status_code = send_get_req(_url="https://api.github.com/search/repositories?q=repo:{}/{}".format(user,repo_name), _header=headers)
+    if resp_status_code == 200:
+        # retrive response body
+        d = resp.json()
+        info_list = ["name","forks", "languages_url", "contributors_url", "branches_url", "description", "html_url"]
+        resp_dict = {repo["name"]:{k:repo[k] for k in info_list} for repo in d["items"]}
+
+        if len(resp_dict) > 0:
+            repo_name = list(resp_dict.keys())[0]
+            resp_dict[repo_name]["repo_name"] = repo_name
+            if branch:
+                resp_dict[repo_name]["html_url"] = resp_dict[repo_name]["html_url"] + "/tree/" + branch
+
+        repo_details = [repo for repo in d["items"]]
+        
+
+        if len(repo_details) == 0:
+            print("Using alternate method to retrieve rpository details...\n")
+            resp, resp_status_code = send_get_req(_url='https://api.github.com/repos/{}/{}'.format(user,repo_name), _header=headers)
+            if resp_status_code == 200:
+                # retrive response body
+                d = resp.json()
+                # retrieve named repo
+                #print(d)
+                # repo_details = [repo for repo in d if repo["name"]==repo_name]
+                if  d["name"].lower()==repo_name.lower():
+                    repo_details = [d]
+                else:
+                    repo_details = []
+
+                resp_dict = {d["name"]:{k:d[k] for k in info_list} for i in range(len(d)) if d["name"].lower() == repo_name.lower()}
+                if len(resp_dict) > 0:
+                    repo_name = list(resp_dict.keys())[0]
+                    resp_dict[repo_name]["repo_name"] = repo_name
+
+                    if branch:
+                        resp_dict[repo_name]["html_url"] = resp_dict[repo_name]["html_url"] + "/tree/" + branch
+
+
                 if len(repo_details) == 0:
                     if api:
                         return jsonify({"error":"Not Found"})
@@ -421,7 +512,7 @@ def get_single_repo_jsanalysis(user, token, repo_name, api=True)->json:
         # check if the repo contains python files
         if  check_lang_exit(user=user, repo=repo_name, headers=headers, lang_list=lang_list):
 
-            stderr, return_code, additions_dict, files= run_to_get_adds_and_save_content(repo_name, repo_dict=repo_details[0], file_ext=[".js"])
+            stderr, return_code, additions_dict, files, file_check_results, commit_history_dict, converted_nbs= run_to_get_adds_and_save_content(user=user ,repo_name=repo_name, repo_dict=repo_details[0], file_ext=[".js"], branch=branch, token=token)
 
             # if there is no error
             if return_code == 0:
@@ -436,8 +527,8 @@ def get_single_repo_jsanalysis(user, token, repo_name, api=True)->json:
                 shutil.rmtree("tmp/"+repo_name)
 
                 if api:
-                    return jsonify({"analysis_results":analysis_results, "commit_additions":additions_dict})
-                return {"analysis_results":analysis_results, "commit_additions":additions_dict}  
+                    return jsonify({"analysis_results":analysis_results, "commit_additions":additions_dict, "commit_history":commit_history_dict})
+                return {"analysis_results":analysis_results, "commit_additions":additions_dict, "commit_history":commit_history_dict} 
             
             else:
                 if api:
