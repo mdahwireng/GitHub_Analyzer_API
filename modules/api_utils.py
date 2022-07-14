@@ -819,7 +819,7 @@ def run_to_get_adds_and_save_content(user, repo_name, repo_dict, file_ext, branc
         file_check_results =  get_file_checks(path=path, exclude_list=exclude_list, file_extensions=file_extensions, files_to_check=files_to_check , dirs_to_check=dirs_to_check)
         
         # retrieve jupyter notebook paths
-        if file_ext == "ipynb":
+        if ".ipynb" in file_ext:
             nb_paths_list = [tup[0] for tup in retriev_files(path=path, file_ext=[".ipynb"])]
 
         converted_nbs = []
