@@ -5,13 +5,14 @@ import sys
 import requests
 from flask import Flask, jsonify
 from modules.Retrieve_Commit_History import Retrieve_Commit_History
+from modules.Run_Js_Analysis import Run_Js_Analysis
 
 curdir = os.path.dirname(os.path.realpath(__file__))
 cpath = os.path.dirname(curdir)
 if not cpath in sys.path:
     sys.path.append(cpath)
 
-from modules.api_utils import add_js_additions, check_lang_exit, get_categorized_file_level, get_cc_summary, get_commit_hist, get_file_level_summary, get_filtered_file_level, get_js_cc_summary, get_jsrepo_level_summary, get_recent_commit_stamp, get_repo_level_summary, retrieve_commits, retrieve_repo_meta, run_jsanalysis, run_pyanalysis, run_to_get_adds_and_save_content, send_get_req
+from modules.api_utils import add_js_additions, check_lang_exit, get_categorized_file_level_js, get_categorized_file_level_py, get_cc_summary, get_commit_hist, get_file_level_summary, get_filtered_file_level, get_js_cc_summary, get_jsrepo_level_summary, get_recent_commit_stamp, get_repo_level_summary, retrieve_commits, retrieve_repo_meta, run_jsanalysis, run_pyanalysis, run_to_get_adds_and_save_content, send_get_req
 
 
 app = Flask(__name__)
@@ -302,12 +303,12 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, branch, ap
                 
         dt = retrieve_repo_meta(resp_json=resp_dict, headers=headers, user=user, branch=branch)
 
-        lang_list = ["Python", "Jupyter Notebook"]
+        lang_list = ["Python", "Jupyter Notebook", "JavaScript"]
     
         # check if the repo contains python files
         if  check_lang_exit(user=user, repo=repo_name, headers=headers, lang_list=lang_list):
 
-            stderr, return_code, additions_dict, files, file_check_results, commit_history_dict, converted_nbs = run_to_get_adds_and_save_content(user=user ,repo_name=repo_name, repo_dict=repo_details[0], file_ext=[".py", ".ipynb"], branch=branch, token=token)
+            stderr, return_code, additions_dict, files, file_check_results, commit_history_dict, converted_nbs = run_to_get_adds_and_save_content(user=user ,repo_name=repo_name, repo_dict=repo_details[0], file_ext=[".py", ".ipynb", ".js"], branch=branch, token=token)
 
             # Make languages dynamic with number of files of the language
             lang_files_pairing = {"Jupyter Notebook":"num_ipynb", "Python":"num_py", "JavaScript":"num_js"}
@@ -334,25 +335,51 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, branch, ap
             # if there is no error
             if return_code == 0:
 
-                # run analysis for python codes
-                analysis_results = run_pyanalysis()
-                # get cyclomatic complexity values for each file
-                analysis_results["cyclomatic_complexity_summary"] = get_cc_summary(analysis_results, "complexity")
-                # get file level summary for code metrics
-                analysis_results["file_level"] = get_file_level_summary(analysis_results, additions_dict)
-                # get aggregate values of code metrics for repo
-                analysis_results["repo_summary"] = get_repo_level_summary(files, analysis_results["file_level"])
-                # get filtered file level changes
-                file_paths = [tup[0][2:] for tup in files]
-                commit_history_dict["file_level"] = get_categorized_file_level(file_paths=file_paths, file_level_analysis=analysis_results["file_level"], converted_nbs=converted_nbs)
+                analysis_results = dict()
+
+                analysis_results_js = dict()
+
+                if file_check_results["num_py"] > 0 or file_check_results["num_ipynb"] > 0:
+                    # if there is atleast one python file run analysis for python codes
+                    analysis_results = run_pyanalysis()
+                    # get cyclomatic complexity values for each file
+                    analysis_results["cyclomatic_complexity_summary"] = get_cc_summary(analysis_results, "complexity")
+                    # get file level summary for code metrics
+                    analysis_results["file_level"] = get_file_level_summary(analysis_results, additions_dict)
+                    # get aggregate values of code metrics for repo
+                    analysis_results["repo_summary"] = get_repo_level_summary(files, analysis_results["file_level"])
+                    # get filtered file level changes
+                    file_paths = [tup[0][2:] for tup in files]
+                    commit_history_dict["file_level"] = get_categorized_file_level_py(file_paths=file_paths, file_level_analysis=analysis_results["file_level"], converted_nbs=converted_nbs)
+
+                if file_check_results["num_js"] > 0:
+                    # if there is atleast one javascript file run analysis for javascript codes
+                    run_jsanalysis = Run_Js_Analysis(files, additions_dict)
+                    analysis_results_js = run_jsanalysis.run_analysis()
+                    cat_js_file_level = get_categorized_file_level_js(analysis_results_js["file_level"])
+
+                    try:
+                        commit_history_dict["file_level"].update(cat_js_file_level)
+                    except KeyError: 
+                        commit_history_dict["file_level"] = cat_js_file_level
+
+                    # files_unpacked = [f for tup in files for f in tup]
+                    # analysis_results_js = run_jsanalysis(files_unpacked)
+                    # analysis_results_js["cyclomatic_complexity_summary"] = get_js_cc_summary(analysis_results_js, "cyclomatic_complexity")
+                    # analysis_results_js = add_js_additions(analysis_results_js, additions_dict)
+                    # analysis_results_js["file_path"] = [tup[0][2:] for tup in files]
+                    # analysis_results_js["additions_dict"] = additions_dict
+                
+                # file_paths = [tup[0][2:] for tup in files]
+                # commit_history_dict["file_level"] = get_categorized_file_level(file_paths=file_paths, file_level_analysis=analysis_results["file_level"], converted_nbs=converted_nbs)
                 
                 # delete repository directory after checking code metrics
                 os.chdir("../../")
                 shutil.rmtree("tmp/"+repo_name)
 
                 if api:
-                    return jsonify({"repo_meta":dt, "analysis_results":analysis_results, "commit_history":commit_history_dict})  
-                return {"repo_meta":dt, "analysis_results":analysis_results, "commit_history":commit_history_dict}
+                    return jsonify({"repo_meta":dt, "analysis_results":{"py":analysis_results, "js":analysis_results_js}, "commit_history":commit_history_dict})  
+                return {"repo_meta":dt, "analysis_results":{"py":analysis_results, "js":analysis_results_js}, "commit_history":commit_history_dict}
 
             else:
                 if api:
@@ -390,70 +417,8 @@ def get_single_repo_jsanalysis(user, token, repo_name, branch, api=True)->json:
         repo_name(str): github repository name
 
     Returns:
-        json of details of python code analysis in repository 
+        json of details of JavaScript code analysis in repository 
     """
-    """if branch == " ":
-        branch = None
-
-    # create authourization headers for get request
-    headers = {"Authorization":"Bearer {}".format(token)}
-    # send get request to github api
-    resp, resp_status_code = send_get_req(_url="https://api.github.com/search/repositories?q=repo:{}/{}".format(user,repo_name), _header=headers)
-    if resp_status_code == 200:
-        # retrive response body
-        d = resp.json()
-        
-        info_list = ["name","forks", "languages_url", "contributors_url", "branches_url", "description", "html_url"]
-        resp_dict = {repo["name"]:{k:repo[k] for k in info_list} for repo in d["items"]}
-        
-
-        if len(resp_dict) > 0:
-            repo_name = list(resp_dict.keys())[0]
-            resp_dict[repo_name]["repo_name"] = repo_name
-            if branch:
-                resp_dict[repo_name]["html_url"] = resp_dict[repo_name]["html_url"] + "/tree/" + branch
-
-        repo_details = [repo for repo in d["items"]]
-        if len(repo_details) == 0:
-            print("Using alternate method to retrieve rpository details...\n")
-            resp, resp_status_code = send_get_req(_url='https://api.github.com/repos/{}/{}'.format(user,repo_name), _header=headers)
-            if resp_status_code == 200:
-                # retrive response body
-                d = resp.json()
-                # retrieve named repo
-                #print(d)
-                # repo_details = [repo for repo in d if repo["name"]==repo_name]
-                if  d["name"].lower()==repo_name.lower():
-                    repo_details = [d]
-                else:
-                    repo_details = []
-
-                resp_dict = {d["name"]:{k:d[k] for k in info_list} for i in range(len(d)) if d["name"].lower() == repo_name.lower()}
-                if len(resp_dict) > 0:
-                    repo_name = list(resp_dict.keys())[0]
-                    resp_dict[repo_name]["repo_name"] = repo_name
-
-                    if branch:
-                        resp_dict[repo_name]["html_url"] = resp_dict[repo_name]["html_url"] + "/tree/" + branch
-
-
-                
-                if len(repo_details) == 0:
-                    if api:
-                        return jsonify({"repo_meta":{"error":"Not Found"}, "analysis_results":{"error":"Not Found"}, "commit_history":{"error":"Not Found"}})
-                    return {"repo_meta":{"error":"Not Found"}, "analysis_results":{"error":"Not Found"}, "commit_history":{"error":"Not Found"}}
-            else:
-                if api:
-                    return jsonify({"repo_meta":{"error":"Not Found"}, "analysis_results":{"error":"Not Found"}}) 
-                return {"repo_meta":{"error":"Not Found"}, "analysis_results":{"error":"Not Found"}}
-                
-        dt = retrieve_repo_meta(resp_json=resp_dict, headers=headers, user=user, branch=branch)
-    
-    
-    
-    """
-    
-    
     
     
     # create authourization headers for get request
@@ -516,19 +481,28 @@ def get_single_repo_jsanalysis(user, token, repo_name, branch, api=True)->json:
 
             # if there is no error
             if return_code == 0:
-                files = [f for tup in files for f in tup]
-                analysis_results = run_jsanalysis(files)
-                analysis_results["cyclomatic_complexity_summary"] = get_js_cc_summary(analysis_results, "cyclomatic_complexity")
-                analysis_results = add_js_additions(analysis_results, additions_dict)
-                analysis_results["repo_summary"] = get_jsrepo_level_summary(files, analysis_results["cyclomatic_complexity_summary"])
+                run_jsanalysis = Run_Js_Analysis(files, additions_dict)
+                analysis_results = run_jsanalysis.run_analysis()
+                cat_js_file_level = get_categorized_file_level_js(analysis_results["file_level"])
+
+                try:
+                    commit_history_dict["file_level"].update(cat_js_file_level)
+                except KeyError: 
+                    commit_history_dict["file_level"] = cat_js_file_level
+
+                # files = [f for tup in files for f in tup]
+                # analysis_results = run_jsanalysis(files)
+                # analysis_results["cyclomatic_complexity_summary"] = get_js_cc_summary(analysis_results, "cyclomatic_complexity")
+                # analysis_results = add_js_additions(analysis_results, additions_dict)
+                # analysis_results["repo_summary"] = get_jsrepo_level_summary(files, analysis_results["cyclomatic_complexity_summary"])
 
                 # delete repository directory after checking code metrics
                 os.chdir("../../")
                 shutil.rmtree("tmp/"+repo_name)
 
                 if api:
-                    return jsonify({"analysis_results":analysis_results, "commit_additions":additions_dict, "commit_history":commit_history_dict})
-                return {"analysis_results":analysis_results, "commit_additions":additions_dict, "commit_history":commit_history_dict} 
+                    return jsonify({"analysis_results":analysis_results, "commit_history":commit_history_dict})
+                return {"analysis_results":analysis_results, "commit_history":commit_history_dict} 
             
             else:
                 if api:
