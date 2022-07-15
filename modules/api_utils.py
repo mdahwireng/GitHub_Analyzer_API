@@ -1098,18 +1098,18 @@ def categorize_file_level_metrics(file_level_analysis, important_metrics_list, m
         for m,v in dict.items():
 
             if m in metrics_descriptions_dict.keys():
-                 des = metrics_descriptions_dict[m]
+                des = metrics_descriptions_dict[m]
 
-            if isinstance(v, float):
-                v = round(v, 2)
-            
-            if m in metrics:
-                val_dict = {"name": des, "value": v}
-                if  m in important_metrics_list:
+                if isinstance(v, float):
+                    v = round(v, 2)
+                
+                if m in metrics:
+                    val_dict = {"name": des, "value": v}
+                    if  m in important_metrics_list:
 
-                    files_dict["important_metrics"].append(val_dict)
-                else:
-                    files_dict["other_metrics"].append(val_dict)
+                        files_dict["important_metrics"].append(val_dict)
+                    else:
+                        files_dict["other_metrics"].append(val_dict)
         categorized.append(files_dict)
     
     return categorized
