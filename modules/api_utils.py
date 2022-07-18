@@ -1183,7 +1183,8 @@ def get_repo_level_summary(files, file_level):
     commulative_keys = ["blank","comments","lloc","loc","multi","single_comments","sloc","additions","num_functions","num_classes","num_methods","difficulty", "effort", "time"]
     f_level_keys = list(file_level.keys())
     
-    
+    if len(file_level) == 0:
+        return dict()
     repo_summary = {k:[] for k in file_level[f_level_keys[0]].keys() if not k.endswith("_rank")}
     for k in repo_summary.keys():
         for f in file_level:
