@@ -5,13 +5,14 @@ import sys
 import requests
 from flask import Flask, jsonify
 from modules.Retrieve_Commit_History import Retrieve_Commit_History
+from modules.Run_Js_Analysis import Run_Js_Analysis
 
 curdir = os.path.dirname(os.path.realpath(__file__))
 cpath = os.path.dirname(curdir)
 if not cpath in sys.path:
     sys.path.append(cpath)
 
-from modules.api_utils import add_js_additions, check_lang_exit, get_categorized_file_level, get_cc_summary, get_commit_hist, get_file_level_summary, get_filtered_file_level, get_js_cc_summary, get_jsrepo_level_summary, get_recent_commit_stamp, get_repo_level_summary, retrieve_commits, retrieve_repo_meta, run_jsanalysis, run_pyanalysis, run_to_get_adds_and_save_content, send_get_req
+from modules.api_utils import add_js_additions, check_lang_exit, get_categorized_file_level_js, get_categorized_file_level_py, get_cc_summary, get_commit_hist, get_file_level_summary, get_filtered_file_level, get_js_cc_summary, get_jsrepo_level_summary, get_recent_commit_stamp, get_repo_level_summary, retrieve_commits, retrieve_repo_meta, run_jsanalysis, run_pyanalysis, run_to_get_adds_and_save_content, send_get_req
 
 
 app = Flask(__name__)
@@ -302,12 +303,12 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, branch, ap
                 
         dt = retrieve_repo_meta(resp_json=resp_dict, headers=headers, user=user, branch=branch)
 
-        lang_list = ["Python", "Jupyter Notebook"]
+        lang_list = ["Python", "Jupyter Notebook", "JavaScript"]
     
         # check if the repo contains python files
         if  check_lang_exit(user=user, repo=repo_name, headers=headers, lang_list=lang_list):
 
-            stderr, return_code, additions_dict, files, file_check_results, commit_history_dict, converted_nbs = run_to_get_adds_and_save_content(user=user ,repo_name=repo_name, repo_dict=repo_details[0], file_ext=[".py", ".ipynb"], branch=branch, token=token)
+            stderr, return_code, additions_dict, files, file_check_results, commit_history_dict, converted_nbs = run_to_get_adds_and_save_content(user=user ,repo_name=repo_name, repo_dict=repo_details[0], file_ext=[".py", ".ipynb", ".js"], branch=branch, token=token)
 
             # Make languages dynamic with number of files of the language
             lang_files_pairing = {"Jupyter Notebook":"num_ipynb", "Python":"num_py", "JavaScript":"num_js"}
@@ -334,17 +335,46 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, branch, ap
             # if there is no error
             if return_code == 0:
 
-                # run analysis for python codes
-                analysis_results = run_pyanalysis()
-                # get cyclomatic complexity values for each file
-                analysis_results["cyclomatic_complexity_summary"] = get_cc_summary(analysis_results, "complexity")
-                # get file level summary for code metrics
-                analysis_results["file_level"] = get_file_level_summary(analysis_results, additions_dict)
-                # get aggregate values of code metrics for repo
-                analysis_results["repo_summary"] = get_repo_level_summary(files, analysis_results["file_level"])
-                # get filtered file level changes
-                file_paths = [tup[0][2:] for tup in files]
-                commit_history_dict["file_level"] = get_categorized_file_level(file_paths=file_paths, file_level_analysis=analysis_results["file_level"], converted_nbs=converted_nbs)
+                analysis_results = dict()
+
+                analysis_results_js = dict()
+
+                if file_check_results["num_py"] > 0 or file_check_results["num_ipynb"] > 0:
+                    # if there is atleast one python file run analysis for python codes
+                    analysis_results = run_pyanalysis()
+                    # get cyclomatic complexity values for each file
+                    analysis_results["cyclomatic_complexity_summary"] = get_cc_summary(analysis_results, "complexity")
+                    # get file level summary for code metrics
+                    analysis_results["file_level"] = get_file_level_summary(analysis_results, additions_dict)
+                    # get aggregate values of code metrics for repo
+                    analysis_results["repo_summary"] = get_repo_level_summary(files, analysis_results["file_level"])
+                    # get filtered file level changes
+                    file_paths = [tup[0][2:] for tup in files]
+                    commit_history_dict["file_level"] = get_categorized_file_level_py(file_paths=file_paths, file_level_analysis=analysis_results["file_level"], converted_nbs=converted_nbs)
+                
+                else:
+                    analysis_results = {"error":"No Python files found"}
+
+                if file_check_results["num_js"] > 0:
+                    # if there is atleast one javascript file run analysis for javascript codes
+                    run_jsanalysis = Run_Js_Analysis(files, additions_dict)
+                    analysis_results_js = run_jsanalysis.run_analysis()
+                    cat_js_file_level = get_categorized_file_level_js(analysis_results_js["file_level"])
+
+                    try:
+                        commit_history_dict["file_level"].extend(cat_js_file_level)
+                    except KeyError: 
+                        commit_history_dict["file_level"] = cat_js_file_level
+
+                    # files_unpacked = [f for tup in files for f in tup]
+                    # analysis_results_js = run_jsanalysis(files_unpacked)
+                    # analysis_results_js["cyclomatic_complexity_summary"] = get_js_cc_summary(analysis_results_js, "cyclomatic_complexity")
+                    # analysis_results_js = add_js_additions(analysis_results_js, additions_dict)
+                    # analysis_results_js["file_path"] = [tup[0][2:] for tup in files]
+                    # analysis_results_js["additions_dict"] = additions_dict
+                
+                # file_paths = [tup[0][2:] for tup in files]
+                # commit_history_dict["file_level"] = get_categorized_file_level(file_paths=file_paths, file_level_analysis=analysis_results["file_level"], converted_nbs=converted_nbs)
                 
                 # delete repository directory after checking code metrics
                 os.chdir("../../")

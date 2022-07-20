@@ -634,6 +634,9 @@ def get_file_checks(exclude_list, file_extensions, files_to_check, dirs_to_check
 
 
     for i in os.walk(path):
+        for j in i[1]:
+            if j.lower() in [i.lower() for i in exclude]:
+                shutil.rmtree(i[0]+"/"+j)
         if True in [False if i[0].lower().startswith(e.lower() + "/") 
                     or i[0].lower() == e.lower() 
                     or i[0].__contains__("/" + e.lower() + "/")
@@ -819,7 +822,8 @@ def run_to_get_adds_and_save_content(user, repo_name, repo_dict, file_ext, branc
         file_check_results =  get_file_checks(path=path, exclude_list=exclude_list, file_extensions=file_extensions, files_to_check=files_to_check , dirs_to_check=dirs_to_check)
         
         # retrieve jupyter notebook paths
-        nb_paths_list = [tup[0] for tup in retriev_files(path=path, file_ext=[".ipynb"])]
+        if ".ipynb" in file_ext:
+            nb_paths_list = [tup[0] for tup in retriev_files(path=path, file_ext=[".ipynb"])]
 
         converted_nbs = []
 
@@ -1097,50 +1101,75 @@ def categorize_file_level_metrics(file_level_analysis, important_metrics_list, m
         for m,v in dict.items():
 
             if m in metrics_descriptions_dict.keys():
-                 des = metrics_descriptions_dict[m]
+                des = metrics_descriptions_dict[m]
 
-            if isinstance(v, float):
-                v = round(v, 2)
-            
-            if m in metrics:
-                val_dict = {"name": des, "value": v}
-                if  m in important_metrics_list:
+                if isinstance(v, float):
+                    v = round(v, 2)
+                
+                if m in metrics:
+                    val_dict = {"name": des, "value": v}
+                    if  m in important_metrics_list:
 
-                    files_dict["important_metrics"].append(val_dict)
-                else:
-                    files_dict["other_metrics"].append(val_dict)
+                        files_dict["important_metrics"].append(val_dict)
+                    else:
+                        files_dict["other_metrics"].append(val_dict)
         categorized.append(files_dict)
     
     return categorized
 
 
 metrics_descriptions_dict = {
-                "additions": "added lines of code",
-                "avg_lines_per_class": "average lines of code per class",
-                "avg_lines_per_function": "average lines of code per function",
-                "avg_lines_per_method": "average lines of code per method",
-                "blank": "blank lines",
-                "cc": "cyclomatic complexity score",
-                "cc_rank": "cyclomatic complexity rank",
-                "comments": "lines of comments",
-                "difficulty": "quantified level of difficulty in writing the code",
-                "effort": "quantified effort invested in writing the codes",
-                "lloc": "logical lines of code",
-                "loc": "lines of code",
-                "mi": "maintainability index score",
-                "mi_rank": "maintainability index rank",
-                "multi": "multi-line comments",
-                "num_classes": "number of classes",
-                "num_functions": "number of functions",
-                "num_methods": "number of methods",
-                "single_comments": "single-line comments",
-                "sloc": "source lines of code",
-                "time": "quantified time spent in writing the code",
-            }
+               "py": 
+                   {
+                    "metrics_descriptions":
+                        {
+                            "additions": "added lines of code",
+                            "avg_lines_per_class": "average lines of code per class",
+                            "avg_lines_per_function": "average lines of code per function",
+                            "avg_lines_per_method": "average lines of code per method",
+                            "blank": "blank lines",
+                            "cc": "cyclomatic complexity score",
+                            "cc_rank": "cyclomatic complexity rank",
+                            "comments": "lines of comments",
+                            "difficulty": "quantified level of difficulty in writing the code",
+                            "effort": "quantified effort invested in writing the codes",
+                            "lloc": "logical lines of code",
+                            "loc": "lines of code",
+                            "mi": "maintainability index score",
+                            "mi_rank": "maintainability index rank",
+                            "multi": "multi-line comments",
+                            "num_classes": "number of classes",
+                            "num_functions": "number of functions",
+                            "num_methods": "number of methods",
+                            "single_comments": "single-line comments",
+                            "sloc": "source lines of code",
+                            "time": "quantified time spent in writing the code"
+                        },
+                    "important_metrics_list":
+                        ["loc", "num_functions", "num_classes", "num_methods"]
+                    },
+                "js":
+                    {
+                     "metrics_descriptions":
+                        {
+                            "additions": "added lines of code",
+                            "avg_lines_per_function": "average lines of code per function",
+                            "cc": "cyclomatic complexity score",
+                            "cc_rank": "cyclomatic complexity rank",
+                            "comments": "lines of comments",
+                            "nloc": "lines of code (excluding comments)",
+                            "num_functions": "number of functions",
+                            "token_count": "number of tokens",
+                            "tot_lines": "total lines of code",
+                        },
+                    "important_metrics_list":
+                        ["num_functions", "token_count", "tot_lines"]
+                    }      
+                }
 
 important_metrics_list=["loc", "num_functions", "num_classes", "num_methods"]
 
-def get_categorized_file_level(file_paths, converted_nbs, file_level_analysis, important_metrics_list=important_metrics_list, metrics_descriptions_dict=metrics_descriptions_dict) -> list:
+def get_categorized_file_level_py(file_paths, converted_nbs, file_level_analysis, important_metrics_list=metrics_descriptions_dict["py"]["important_metrics_list"], metrics_descriptions_dict=metrics_descriptions_dict["py"]["metrics_descriptions"]) -> list:
     """
     Categorizes the file level analysis results into important and other metrics
 
@@ -1158,6 +1187,21 @@ def get_categorized_file_level(file_paths, converted_nbs, file_level_analysis, i
     categorized = categorize_file_level_metrics(fltd, important_metrics_list, metrics_descriptions_dict)
     return categorized
 
+
+def get_categorized_file_level_js(file_level_analysis, important_metrics_list=metrics_descriptions_dict["js"]["important_metrics_list"], metrics_descriptions_dict=metrics_descriptions_dict["js"]["metrics_descriptions"]) -> list:
+    """
+    Categorizes the file level analysis results into important and other metrics
+
+    Args:
+        file_level_analysis (dict): The file level analysis results
+        important_metrics_list (list): A list of important metrics, default is ["num_functions", "token_count", "tot_lines"]
+        metrics_description_dict (dict): A dictionary of metric descriptions, default is {"additions": "added lines of code", "avg_lines_per_class": "average lines of code per class", "avg_lines_per_function": "average lines of code per function", "avg_lines_per_method": "average lines of code per method", "blank": "blank lines", "cc": "cyclomatic complexity score", "cc_rank": "cyclomatic complexity rank", "comments": "lines of comments", "difficulty": "quantified level of difficulty in writing the code", "effort": "quantified effort invested in writing the codes", "lloc": "logical lines of code", "loc": "lines of code", "mi": "maintainability index score", "mi_rank": "maintainability index rank", "multi": "multi-line comments", "num_classes": "number of classes", "num_functions": "number of functions", "num_methods": "number of methods", "single_comments": "single-line comments", "sloc": "source lines of code", "time": "quantified time spent in writing the code"}
+
+    Returns:
+        A list of dictionaries of categorized file level analysis results
+    """
+    categorized = categorize_file_level_metrics(file_level_analysis, important_metrics_list, metrics_descriptions_dict)
+    return categorized
 
 
 
@@ -1182,9 +1226,9 @@ def get_js_cc_summary(analysis_results, cc_key):
 def get_repo_level_summary(files, file_level):
     commulative_keys = ["blank","comments","lloc","loc","multi","single_comments","sloc","additions","num_functions","num_classes","num_methods","difficulty", "effort", "time"]
     f_level_keys = list(file_level.keys())
-    
     if len(file_level) == 0:
         return dict()
+    
     repo_summary = {k:[] for k in file_level[f_level_keys[0]].keys() if not k.endswith("_rank")}
     for k in repo_summary.keys():
         for f in file_level:
@@ -1220,6 +1264,8 @@ def add_js_additions(analysis_results, addition_dict):
 
 
 def get_jsrepo_level_summary(files, file_level):
+    if len(file_level) == 0 or len(files) == 0:
+        return dict()
 
     repo_summary = {k:[] for k in file_level[files[0]].keys() if k != "rank"}
     
