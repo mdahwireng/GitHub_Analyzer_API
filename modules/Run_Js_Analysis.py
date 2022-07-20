@@ -5,7 +5,7 @@ from radon.complexity import cc_rank
 
 class Run_Js_Analysis:
     def __init__(self, files, additions_dict):
-        self.files = [tup[0] for tup in files]
+        self.files = [tup[0] for tup in files if tup[0].endswith(".js")]
         self.additions_dict = additions_dict
         self.file_analysis = [lizard.analyze_file(f) for f in self.files]
         self.file_level = []
@@ -15,6 +15,7 @@ class Run_Js_Analysis:
     def retrieve_file_comments(self,file_path):
         code = lizard.auto_read(file_path)
         context = lizard.FileInfoBuilder(file_path)
+      
         reader = (lizard.get_reader_for(file_path))(context)
         tokens = reader.generate_tokens(code)
         count = 0   
@@ -54,6 +55,7 @@ class Run_Js_Analysis:
             else:
                 hld["num_functions"] = 0
                 hld["avg_lines_per_function"] = 0
+                hld["avg_token_per_function"] = 0
 
             f_name = hld["filename"][2:]
             hld["file_name"] = f_name
