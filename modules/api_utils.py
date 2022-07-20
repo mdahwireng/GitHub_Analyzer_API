@@ -357,7 +357,7 @@ def run_cmd_process(cmd_list) -> tuple:
 
 
 
-def retriev_files(path, file_ext) -> list:
+def retriev_files(path, file_ext, exclude_list=[".git", ".ipynb_checkpoints", "__pycache__", "node_modules"]) -> list:
     """
     Takes the path to the directory where search is to be done recursively and 
     the file extention of files to look for
@@ -368,6 +368,7 @@ def retriev_files(path, file_ext) -> list:
         path(str): path to the directory where search is to be done recursively
         file_ext(lst): file extention of files to look for with the "." included
                         example ".py"
+        exclude_list(lst): list of directories to exclude from the search
 
     Returns:
         A list of tuples of the relative path of language files , relative path of language files 
@@ -378,7 +379,8 @@ def retriev_files(path, file_ext) -> list:
             if not root.startswith("__") and not root.startswith("..")
             for fn in files for ext in file_ext if fn.endswith(ext)]
 
-    filter_list = ["lib","bin","etc", "include", "share", "var", "lib64", "venv", ".ipynb_checkpoints"]
+    filter_list = ["lib","bin","etc", "include", "share", "var", "lib64", "venv"]
+    filter_list = list(set(filter_list + exclude_list))
     take_out = []
     for root in filter_list:
         for tup in r_list:
@@ -626,7 +628,7 @@ def get_file_checks(exclude_list, file_extensions, files_to_check, dirs_to_check
         dict: A dictionary of the file checks and number of files
     """
     exclude = exclude_list
-    exclude_roots = ["./"+i.lower() for i in exclude]
+    exclude_roots = [i.lower() for i in exclude]
     count_dict = {"num_dirs":0, "num_files":0}
     extension_checks = {"num_"+ ext.lower():0 for ext in file_extensions}
     file_checks = {f.lower():False for f in files_to_check}
@@ -634,10 +636,11 @@ def get_file_checks(exclude_list, file_extensions, files_to_check, dirs_to_check
 
 
     for i in os.walk(path):
-        if True in [False if i[0].lower().startswith(e.lower() + "/") 
+
+        if False in [True if i[0].lower().startswith("./" + e.lower() + "/") 
                     or i[0].lower() == e.lower() 
                     or i[0].__contains__("/" + e.lower() + "/")
-                    else True for e in exclude_roots ] or len(exclude_roots) == 0:
+                    else False for e in exclude_roots ] or len(exclude_roots) == 0:
             
             dirs = i[1]
             _files = i[2]
@@ -1223,7 +1226,8 @@ def get_js_cc_summary(analysis_results, cc_key):
 def get_repo_level_summary(files, file_level):
     commulative_keys = ["blank","comments","lloc","loc","multi","single_comments","sloc","additions","num_functions","num_classes","num_methods","difficulty", "effort", "time"]
     f_level_keys = list(file_level.keys())
-    
+    if len(file_level) == 0:
+        return dict()
     
     repo_summary = {k:[] for k in file_level[f_level_keys[0]].keys() if not k.endswith("_rank")}
     for k in repo_summary.keys():
@@ -1260,6 +1264,8 @@ def add_js_additions(analysis_results, addition_dict):
 
 
 def get_jsrepo_level_summary(files, file_level):
+    if len(file_level) == 0 or len(files) == 0:
+        return dict()
 
     repo_summary = {k:[] for k in file_level[files[0]].keys() if k != "rank"}
     
