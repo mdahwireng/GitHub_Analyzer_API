@@ -359,7 +359,7 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, branch, ap
                     cat_js_file_level = get_categorized_file_level_js(analysis_results_js["file_level"])
 
                     try:
-                        commit_history_dict["file_level"].update(cat_js_file_level)
+                        commit_history_dict["file_level"].extend(cat_js_file_level)
                     except KeyError: 
                         commit_history_dict["file_level"] = cat_js_file_level
 
