@@ -22,8 +22,8 @@ class Run_Js_Analysis:
         for t in tokens:
             c = reader.get_comment_from_token(t)
             if c is not None:
-                    for _ in c.splitlines()[1:]:
-                        count += 1
+                for _ in c.splitlines():
+                    count += 1
         return count
 
 
