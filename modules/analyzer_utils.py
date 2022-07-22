@@ -484,7 +484,7 @@ def get_repo_meta_pyanalysis(user, github_token, repo_name, branch)->dict:
         hld["repo_meta"] = repo_meta_repo_pyanalysis["repo_meta"]
 
     try:
-        hld["repo_anlysis_metrics"] = repo_meta_repo_pyanalysis["analysis_results"]["repo_summary"]
+        hld["repo_anlysis_metrics"] = repo_meta_repo_pyanalysis["analysis_results"]
     except:
         hld["repo_anlysis_metrics"] = repo_meta_repo_pyanalysis["analysis_results"]
 

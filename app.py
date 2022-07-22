@@ -350,8 +350,11 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, branch, ap
                     analysis_results["repo_summary"] = get_repo_level_summary(files, analysis_results["file_level"])
                     # get filtered file level changes
                     file_paths = [tup[0][2:] for tup in files]
-                    commit_history_dict["file_level"] = get_categorized_file_level_py(file_paths=file_paths, file_level_analysis=analysis_results["file_level"], converted_nbs=converted_nbs)
+                    cat_file_level_py = get_categorized_file_level_py(file_paths=file_paths, file_level_analysis=analysis_results["file_level"], converted_nbs=converted_nbs)
+                    commit_history_dict["file_level"] = cat_file_level_py
+                    analysis_results["file_level"] = cat_file_level_py
 
+                print("\n\nNum_JS: {}\n\n".format(file_check_results["num_js"]))
                 if file_check_results["num_js"] > 0:
                     # if there is atleast one javascript file run analysis for javascript codes
                     run_jsanalysis = Run_Js_Analysis(files, additions_dict)
@@ -378,8 +381,8 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, branch, ap
                 shutil.rmtree("tmp/"+repo_name)
 
                 if api:
-                    return jsonify({"repo_meta":dt, "analysis_results":{"py":analysis_results, "js":analysis_results_js}, "commit_history":commit_history_dict})  
-                return {"repo_meta":dt, "analysis_results":{"py":analysis_results, "js":analysis_results_js}, "commit_history":commit_history_dict}
+                    return jsonify({"repo_meta":dt, "analysis_results":{"Python":analysis_results, "JavaScript":analysis_results_js}, "commit_history":commit_history_dict})  
+                return {"repo_meta":dt, "analysis_results":{"Python":analysis_results, "JavaScript":analysis_results_js}, "commit_history":commit_history_dict}
 
             else:
                 if api:
