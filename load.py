@@ -4,7 +4,7 @@ import os
 import sys
 import pandas as pd
 import pickle
-from modules.dup_load_to_strapi import Load_To_Strapi
+from modules.Load_to_starpi import Load_To_Strapi
 from modules.Prepare_Assignment_Submissions import PrepareAssignmentDf
 from modules.Treat_Assignment_Response import Get_Assignment_Data
 
