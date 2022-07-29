@@ -636,11 +636,12 @@ def get_file_checks(exclude_list, file_extensions, files_to_check, dirs_to_check
 
 
     for i in os.walk(path):
-
-        if False in [True if i[0].lower().startswith("./" + e.lower() + "/") 
+        check_list = [True if i[0].lower().__contains__("/" + e.lower()+ "/")
+                    or i[0].lower().startswith("./" + e.lower() + "/") 
                     or i[0].lower() == e.lower() 
-                    or i[0].__contains__("/" + e.lower() + "/")
-                    else False for e in exclude_roots ] or len(exclude_roots) == 0:
+                    else False for e in exclude_roots]
+
+        if sum(check_list) == 0 or len(exclude_roots) == 0:
             
             dirs = i[1]
             _files = i[2]
@@ -653,7 +654,7 @@ def get_file_checks(exclude_list, file_extensions, files_to_check, dirs_to_check
             for ig in exclude:
                 # remove files from the directories to exclude
                 for f in _files:
-                     if f.lower().startswith(ig.lower() + "/") or f.lower() == ig.lower() or f.__contains__("/" + ig.lower() + "/"):
+                     if f.lower().startswith("./" + ig.lower() + "/") or f.lower() == ig.lower() or f.lower().__contains__("/" + ig.lower() + "/"):
                          _files.remove(f)
                 # remove the directories to exclude
                 try:
@@ -680,7 +681,8 @@ def get_file_checks(exclude_list, file_extensions, files_to_check, dirs_to_check
                         extension_checks["num_"+ext] += 1
 
         else:
-            print ("{} is excluded\n".format(i[0]))
+            pass
+            #print ("{} is excluded\n".format(i[0]))
 
 
     checks_results_dict = dict()
@@ -1228,8 +1230,19 @@ def get_repo_level_summary(files, file_level):
     f_level_keys = list(file_level.keys())
     if len(file_level) == 0:
         return dict()
+
+    f_key = []
+    for k in f_level_keys:
+        if "error" not in file_level[k].keys():
+            f_key = list(file_level[k].keys())
+            break
     
-    repo_summary = {k:[] for k in file_level[f_level_keys[0]].keys() if not k.endswith("_rank")}
+    selected_key = list(file_level[f_level_keys[0]].keys())
+
+    if len(f_key) > 0:
+        selected_key = f_key
+    
+    repo_summary = {k:[] for k in selected_key if not k.endswith("_rank")}
     for k in repo_summary.keys():
         for f in file_level:
             if not f.__contains__("changed_") and k in file_level[f].keys():
