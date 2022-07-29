@@ -1123,7 +1123,7 @@ class Load_To_Strapi:
 
         
         now = datetime.now()
-        output_dir = "data/run_errors/batch{}/{}/{}/run{}/{}/".format(batch,platform,week,run_number,run_type) + now.strftime("%Y-%m-%d_%H-%M-%S")
+        output_dir = "data/run_errors/batch{}/{}/{}/run{}/{}/".format(batch,platform,week,run_number,run_type) + now.strftime("%Y-%m-%d")
 
         
         # Save users with Github User analysis error
