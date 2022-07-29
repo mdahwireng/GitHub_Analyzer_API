@@ -357,7 +357,7 @@ def run_cmd_process(cmd_list) -> tuple:
 
 
 
-def retriev_files(path, file_ext) -> list:
+def retriev_files(path, file_ext, exclude_list=[".git", ".ipynb_checkpoints", "__pycache__", "node_modules"]) -> list:
     """
     Takes the path to the directory where search is to be done recursively and 
     the file extention of files to look for
@@ -368,6 +368,7 @@ def retriev_files(path, file_ext) -> list:
         path(str): path to the directory where search is to be done recursively
         file_ext(lst): file extention of files to look for with the "." included
                         example ".py"
+        exclude_list(lst): list of directories to exclude from the search
 
     Returns:
         A list of tuples of the relative path of language files , relative path of language files 
@@ -378,7 +379,8 @@ def retriev_files(path, file_ext) -> list:
             if not root.startswith("__") and not root.startswith("..")
             for fn in files for ext in file_ext if fn.endswith(ext)]
 
-    filter_list = ["lib","bin","etc", "include", "share", "var", "lib64", "venv", ".ipynb_checkpoints"]
+    filter_list = ["lib","bin","etc", "include", "share", "var", "lib64", "venv"]
+    filter_list = list(set(filter_list + exclude_list))
     take_out = []
     for root in filter_list:
         for tup in r_list:
@@ -398,8 +400,6 @@ def retriev_files(path, file_ext) -> list:
     r_list = [tup for tup in r_list if tup not in take_out]
 
     return r_list
-
-
 
 
 def retrieve_init_last_commit_sha(stdout) -> tuple:
@@ -626,7 +626,7 @@ def get_file_checks(exclude_list, file_extensions, files_to_check, dirs_to_check
         dict: A dictionary of the file checks and number of files
     """
     exclude = exclude_list
-    exclude_roots = ["./"+i.lower() for i in exclude]
+    exclude_roots = [i.lower() for i in exclude]
     count_dict = {"num_dirs":0, "num_files":0}
     extension_checks = {"num_"+ ext.lower():0 for ext in file_extensions}
     file_checks = {f.lower():False for f in files_to_check}
@@ -634,13 +634,13 @@ def get_file_checks(exclude_list, file_extensions, files_to_check, dirs_to_check
 
 
     for i in os.walk(path):
-        for j in i[1]:
-            if j.lower() in [i.lower() for i in exclude]:
-                shutil.rmtree(i[0]+"/"+j)
-        if True in [False if i[0].lower().startswith(e.lower() + "/") 
+
+        check_list = [True if i[0].lower().__contains__("/" + e.lower()+ "/")
+                    or i[0].lower().startswith("./" + e.lower() + "/") 
                     or i[0].lower() == e.lower() 
-                    or i[0].__contains__("/" + e.lower() + "/")
-                    else True for e in exclude_roots ] or len(exclude_roots) == 0:
+                    else False for e in exclude_roots]
+
+        if sum(check_list) == 0 or len(exclude_roots) == 0:
             
             dirs = i[1]
             _files = i[2]
@@ -680,7 +680,8 @@ def get_file_checks(exclude_list, file_extensions, files_to_check, dirs_to_check
                         extension_checks["num_"+ext] += 1
 
         else:
-            print ("{} is excluded\n".format(i[0]))
+            pass
+            #print ("{} is excluded\n".format(i[0]))
 
 
     checks_results_dict = dict()
@@ -814,7 +815,7 @@ def run_to_get_adds_and_save_content(user, repo_name, repo_dict, file_ext, branc
         commit_history_dict = ret_commit.get_commit_history_and_contributors()
 
         # check for the existence of files with the given file extension
-        exclude_list=[".git", ".ipynb_checkpoints", "__pycache__", "node_modules"]
+        exclude_list=[".git", ".ipynb_checkpoints", "__pycache__", "node_modules", "lib", "bin", "etc", "include", "share", "var", "lib64", "venv"]
         file_extensions=["py","js","ipynb"]
         files_to_check=[".gitignore", "README.md", "requirements.txt", "dockerfile", ".dvcignore"]
         dirs_to_check=[".github", ".dvc"]
