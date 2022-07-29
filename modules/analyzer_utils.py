@@ -242,44 +242,22 @@ def get_metric_category(val, break_points, reverse=False)->str:
         str: The metric category.
     """
     if int(val) == -999 or float(val) == -999.0:
-        return "N/A"
-    if sum(break_points) == 0:
-        return "bottom 50%"
-    
-    if val == 0:
-        return "bottom 50%"
+        return None
     
     if reverse:
-        if val <= break_points[0]:
-            return "top 1%"
+        for dict_ in break_points[:-1]:
+            if val <= dict_["value"]:
+                return dict_["rank"]
+        return break_points[-1]
 
-        elif val <= break_points[1]:
-            return "top 10%"
-
-        elif val <= break_points[2]:
-            return "top 25%"
-
-        elif val <= break_points[3]:
-            return "top 50%"
-
-        else:
-            return "bottom 50%"
     
     else:
-        if val >= break_points[0]:
-            return "top 1%"
+        for dict_ in break_points[:-1]:
+            if val >= dict_["value"]:
+                return dict_["rank"]
+        return break_points[-1]
 
-        elif val >= break_points[1]:
-            return "top 10%"
-
-        elif val >= break_points[2]:
-            return "top 25%"
-
-        elif val >= break_points[3]:
-            return "top 50%"
-
-        else:
-            return "bottom 50%"
+        
 
 
 
@@ -432,22 +410,34 @@ def get_break_points(series, cat_list=[0.99, 0.9, 0.75, 0.5], reverse=False, _ad
         Returns:
             tuple: break_points, _min, _max, _sum if _add is true else break_points, _min, _max
     """
+    cat_list_ = cat_list.copy()
     # find the reverse for values which best when less
     if reverse:
-        cat_list = [1-bp for bp in cat_list]
+        cat_list_ = [1-bp for bp in cat_list]
 
     _min = float(series.min())
     _max = float(series.max())
     
-    div = _max  - _min
+    # div = _max  - _min
 
-    if div == 0:
-        break_points = [0 for i in range(len(cat_list))]
-    else:
-        #break_points = list(series.quantile(cat_list).values)
-        break_points = series.quantile(cat_list, interpolation='lower').to_list()
+    # if div == 0:
+    #     break_points = [0 for i in range(len(cat_list))]
+    # else:
+    #     #break_points = list(series.quantile(cat_list).values)
+    #     break_points = series.quantile(cat_list, interpolation='lower').to_list()
 
-        #print(f"\n\n###################{break_points}###################\n\n")
+    #     #print(f"\n\n###################{break_points}###################\n\n")
+
+    #break_points = list(series.quantile(cat_list).values)
+    break_points = series.quantile(cat_list_, interpolation='lower').to_list()
+    break_points = [
+                     {
+                        "name": "{} percentile".format(int(cat_list[i]*100)),
+                        "value": break_points[i],
+                        "rank": "top {}%".format(int(100 - cat_list[i]*100))
+                     } for i in range(len(break_points))
+                    ]
+    break_points.append("bottom {}%".format(int(100 - cat_list[-1]*100)))
 
     if _add:
         _sum = float(series.sum())

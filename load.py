@@ -4,15 +4,15 @@ import os
 import sys
 import pandas as pd
 import pickle
-from modules.Load_to_starpi import Load_To_Strapi
+from modules.dup_load_to_strapi import Load_To_Strapi
 from modules.Prepare_Assignment_Submissions import PrepareAssignmentDf
 from modules.Treat_Assignment_Response import Get_Assignment_Data
 
 
-curdir = os.path.dirname(os.path.realpath(__file__))
-cpath = os.path.dirname(curdir)
-if not cpath in sys.path:
-    sys.path.append(cpath)
+# curdir = os.path.dirname(os.path.realpath(__file__))
+# cpath = os.path.dirname(curdir)
+# if not cpath in sys.path:
+#     sys.path.append(cpath)
 
 
   
@@ -20,7 +20,7 @@ from modules.analyzer_utils import  get_repo_meta_pyanalysis
 
 
 
-platform = "stage"
+platform = "dev"
 
 if os.path.exists(".env/secret.json"):
     with open(".env/secret.json", "r") as s:
@@ -48,7 +48,7 @@ if github_token and strapi_token:
         print("\nThe state file does not exit and system will exit now...\n")
         sys.exit(1)
 
-    current_week = datetime.now().isocalendar()[1] - 1
+    current_week = datetime.now().isocalendar()[1] - 5
     training_week = current_week - 18
     
     week= "week{}".format(training_week)
@@ -85,9 +85,13 @@ if github_token and strapi_token:
 
 
         prep_assn = PrepareAssignmentDf(assignmnent_data_df, run_number, "root_url")
+
+        now_date = datetime.now()
+        now_folder = now_date.strftime("%Y-%m-%d")
+        now_str = now_date.strftime("%Y-%m-%d_%H-%M-%S")
         
-        week_submission_dir = "data/week_data/batch{}/{}/{}/run{}".format(batch, week, platform, run_number)
-        week_submission_path = week_submission_dir + "/b{}_{}_{}_run{}.csv".format(batch, week, platform, run_number)
+        week_submission_dir = "data/week_data/batch{}/{}/{}/{}/run{}".format(batch, week, platform,now_folder,run_number)
+        week_submission_path = week_submission_dir + "/b{}_{}_{}_run{}_{}.csv".format(batch, week, platform, run_number, now_str)
         
         if not os.path.isdir(week_submission_dir):
             os.makedirs(week_submission_dir)

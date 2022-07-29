@@ -354,7 +354,7 @@ def single_repos_meta_single_repos_pyanalysis(user, token, repo_name, branch, ap
                     commit_history_dict["file_level"] = cat_file_level_py
                     analysis_results["file_level"] = cat_file_level_py
 
-                print("\n\nNum_JS: {}\n\n".format(file_check_results["num_js"]))
+
                 if file_check_results["num_js"] > 0:
                     # if there is atleast one javascript file run analysis for javascript codes
                     run_jsanalysis = Run_Js_Analysis(files, additions_dict)

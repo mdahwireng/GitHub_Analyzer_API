@@ -19,7 +19,7 @@ from modules.analyzer_utils import get_repo_meta_pyanalysis
 
 
 
-platform = "stage"
+platform = "dev"
 
 if os.path.exists(".env/secret.json"):
     with open(".env/secret.json", "r") as s:
@@ -47,7 +47,7 @@ if github_token and strapi_token:
         print("\nThe state file does not exit and system will exit now...\n")
         sys.exit(1)
 
-    current_week = datetime.now().isocalendar()[1] - 3
+    current_week = datetime.now().isocalendar()[1] - 10
     training_week = current_week - 18
     
     week= "week{}".format(training_week)
@@ -63,7 +63,7 @@ if github_token and strapi_token:
     
     
     
-    error_fix_file_path = "data/error_fix/b{}_{}_run{}_error_fix.csv".format(batch, week, run_number)
+    error_fix_file_path = "data/error_fix/{}/b{}_{}_run{}_error_fix.csv".format(platform, batch, week, run_number)
     github_df = pd.read_csv(error_fix_file_path)
     github_df = github_df.drop_duplicates(subset=["trainee_id"])
     github_df = github_df.replace({np.nan: None})

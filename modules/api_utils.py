@@ -814,7 +814,7 @@ def run_to_get_adds_and_save_content(user, repo_name, repo_dict, file_ext, branc
         commit_history_dict = ret_commit.get_commit_history_and_contributors()
 
         # check for the existence of files with the given file extension
-        exclude_list=[".git", ".ipynb_checkpoints", "__pycache__", "node_modules"]
+        exclude_list=[".git", ".ipynb_checkpoints", "__pycache__", "node_modules", "lib", "bin", "etc", "include", "share", "var", "lib64", "venv"]
         file_extensions=["py","js","ipynb"]
         files_to_check=[".gitignore", "README.md", "requirements.txt", "dockerfile", ".dvcignore"]
         dirs_to_check=[".github", ".dvc"]
