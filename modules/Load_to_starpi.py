@@ -109,8 +109,48 @@ default_vals_dict = {"repo_df": repo_df_cols_default, "user_df": user_df_cols_de
 
 
 class Load_To_Strapi:
+    """
+    This class is used to load data to Strapi.
 
-    def __init__(self, platform, week, batch, run_number, base_url, github_df, github_token, strapi_token, columns_dict=columns_dict, default_vals_dict=default_vals_dict, run_type="main", metrics_detail_dict=metrics_detail_dict, cat_list=cat_list):
+    methods:
+        __init__: initializes the class
+        get_analysis_data: Gets analysis data from api
+                            Returns a dictionary of analysis data with repo meta, repo_analysis_metrics and commit_history as keys
+        load_repo_meta_and_repo_to_strapi: Loads data to repo and repo_meta tables in strapi
+        load_user_meta_to_strapi: Loads user meta data to strapi
+        load_commit_history_to_strapi: Loads commit history data to strapi
+        populate_lang_val_dict: Populate the language value dict with the data from the github api
+        update_lang_val_dict: Updates the language value dict with already existing data in the database
+        create_analysis_dict: Creates the analysis dict with the data from the lang val dicty
+        create_analysis_strapi_records: Creates records form analysis dict to be uploaded into strapi
+        save_errors: Saves errors encountered during uploads
+        load_entries_to_strapi: Loads entries to strapi
+        run_to_load: Runs the complete load process.
+
+    """
+
+    def __init__(self, platform, week, batch, run_number, base_url, github_df, github_token, strapi_token, columns_dict=columns_dict, default_vals_dict=default_vals_dict, run_type="main", metrics_detail_dict=metrics_detail_dict, cat_list=cat_list) -> None:
+        """
+        Initialize the class
+        
+        Args:
+            platform (str): platform name
+            week (str): week number
+            batch (str): batch number
+            run_number (str): run number
+            base_url (str): base url of the platform
+            github_df (pd.DataFrame): github dataframe
+            github_token (str): github token
+            strapi_token (str): strapi token
+            columns_dict (dict): columns dictionary
+            default_vals_dict (dict): default values dictionary
+            run_type (str): run type
+            metrics_detail_dict (dict): metrics detail dictionary
+            cat_list (list): category list
+            
+        Returns:
+            None
+        """
         
         run_type_dict = {"main": "main_run_errors", "fix":"error_fixes_run_errors"}
         
@@ -141,7 +181,19 @@ class Load_To_Strapi:
         self.cat_list = cat_list
 
 
-    def get_analysis_data(self, user, repo_name, branch):
+    def get_analysis_data(self, user, repo_name, branch) -> dict:
+        """
+        Gets analysis data from api
+        Returns a dictionary of analysis data with repo meta, repo_analysis_metrics and commit_history as keys
+        
+        Args:
+            user (str): user name
+            repo_name (str): repo name
+            branch (str): branch name
+
+        Returns:
+            dict: analysis data
+        """
         # get repo meta data and analysis data
         hld = dict()
         repo_meta_repo_pyanalysis = get_repo_meta_pyanalysis(user, self.github_token, repo_name, branch)
@@ -165,7 +217,27 @@ class Load_To_Strapi:
         return hld
 
 
-    def load_repo_meta_and_repo_to_strapi(self, _dict, hld, repo_meta_error_dict, repo_table_error_dict, assignment_table_error_dict, trainee_id, repo_name, branch, user, trainee, assignments_ids):
+    def load_repo_meta_and_repo_to_strapi(self, _dict, hld, repo_meta_error_dict, repo_table_error_dict, assignment_table_error_dict, trainee_id, repo_name, branch, user, trainee, assignments_ids) -> None:
+        """
+        Loads data to repo and repo_meta tables in strapi
+
+        Args:
+            _dict (dict): dictionary of raw data with trainee_id as key
+            hld (dict): Raw data retrieved from api
+            repo_meta_error_dict (dict): repo meta error dictionary
+            repo_table_error_dict (dict): repo table error dictionary
+            assignment_table_error_dict (dict): assignment table error dictionary
+            trainee_id (str): trainee id of the user
+            repo_name (str): repo name
+            branch (str): branch name
+            user (str): user name
+            trainee (int): strapi trainee table index for trainee
+            assignments_ids (list): strapi assignment table index for assignments
+
+        Returns:
+            None
+        """
+
         client_url = self.client_url
         base_url = self.base_url
         strapi_token = self.strapi_token
@@ -558,7 +630,24 @@ class Load_To_Strapi:
         return repo_id
 
 
-    def load_user_meta_to_strapi(self, hld, repo_id, user_error_dict, user, repo_name, branch, trainee_id, trainee, _dict):
+    def load_user_meta_to_strapi(self, hld, repo_id, user_error_dict, user, repo_name, branch, trainee_id, trainee, _dict) -> None:
+        """
+        Loads user meta data to strapi
+
+        Args:
+            hld (dict): Raw data retrieved from api
+            repo_id (str): Repo id
+            user_error_dict (dict): Holds user meta data errors
+            user (str): User name
+            repo_name (str): Repo name
+            branch (str): Branch name
+            trainee_id (str): trainee id of the user
+            trainee (int): strapi trainee table index for trainee
+            _dict (dict): dictionary of raw data with trainee_id as key
+
+        Returns:
+            None
+        """
 
         base_url = self.base_url
         strapi_token = self.strapi_token
@@ -662,7 +751,24 @@ class Load_To_Strapi:
             user_error_dict["error"].append(hld["user"])
 
 
-    def load_commit_history_to_strapi(self, hld, trainee, trainee_id, _dict, repo_id, commit_history_error_dict, user, repo_name, branch):
+    def load_commit_history_to_strapi(self, hld, trainee, trainee_id, _dict, repo_id, commit_history_error_dict, user, repo_name, branch) -> None:
+        """
+        Loads commit history data to strapi
+        
+        Args:
+            hld (dict): Raw data retrieved from api
+            trainee (int): strapi trainee table index for trainee
+            trainee_id (str): trainee id of the user
+            _dict (dict): dictionary of raw data with trainee_id as key
+            repo_id (int): strapi repo table index for repo
+            commit_history_error_dict (dict):
+            user (str): username of the user
+            repo_name (str): name of the repo
+            branch (str): branch of the repo
+            
+        Returns:
+            None
+        """
 
         base_url = self.base_url
         strapi_token = self.strapi_token
@@ -762,7 +868,20 @@ class Load_To_Strapi:
             commit_history_error_dict["error"].append(hld["commit_history"])
 
 
-    def populate_lang_val_dict(self, hld, trainee, trainee_id, repo_id, error_dict):
+    def populate_lang_val_dict(self, hld, trainee, trainee_id, repo_id, error_dict) -> None:
+        """
+        Populate the language value dict with the data from the github api
+
+        Args:
+            hld (dict): Raw data retrieved from api
+            trainee (int): strapi trainee table index for trainee
+            trainee_id (str): trainee id of the user
+            repo_id (int): strapi repo table index for repo
+            error_dict (dict): the error dict
+
+        Returns:
+            None
+        """
         
         lang_val_dict = self.lang_val_dict
         run_number = self.run_number
@@ -811,7 +930,16 @@ class Load_To_Strapi:
         print("Populating lang val dict completed!\n")
 
   
-    def update_lang_val_dict(self):
+    def update_lang_val_dict(self) -> None:
+        """
+        Updates the language value dict with already existing data in the database
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
         strapi_token = self.strapi_token
         week = self.week
         run_number = self.run_number
@@ -927,7 +1055,16 @@ class Load_To_Strapi:
             print("No data to update lang val dict...\n")
 
 
-    def create_analysis_dict(self):
+    def create_analysis_dict(self)-> None:
+        """
+        Creates the analysis dict with the data from the lang val dict
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
         week = self.week
         run_number = self.run_number
         batch = self.batch
@@ -1008,7 +1145,16 @@ class Load_To_Strapi:
         self.analysis_dict = analysis_dict
 
 
-    def create_analysis_strapi_records(self):
+    def create_analysis_strapi_records(self) -> None:
+        """
+        Creates records form analysis dict to be uploaded into strapi
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
         week = self.week
         run_number = self.run_number
         batch = self.batch
@@ -1113,7 +1259,22 @@ class Load_To_Strapi:
         self.analysis_dict = analysis_dict  
 
 
-    def save_errors(self, commit_history_error_dict, user_error_dict, repo_meta_error_dict, assignment_table_error_dict, analysis_retrival_error_dict, analysis_enrty_error_dict, analysis_summary_entry_error_dict):
+    def save_errors(self, commit_history_error_dict, user_error_dict, repo_meta_error_dict, assignment_table_error_dict, analysis_retrival_error_dict, analysis_enrty_error_dict, analysis_summary_entry_error_dict) -> None:
+        """
+        Saves errors encountered during uploads
+
+        Args:
+            commit_history_error_dict: dictionary of errors encountered during commit history upload
+            user_error_dict: dictionary of errors encountered during user upload
+            repo_meta_error_dict: dictionary of errors encountered during repo meta upload 
+            assignment_table_error_dict: dictionary of errors encountered during assignment table updates
+            analysis_retrival_error_dict: dictionary of errors encountered during analysis retrieval
+            analysis_enrty_error_dict: dictionary of errors encountered during analysis data uploads
+            analysis_summary_entry_error_dict: dictionary of errors encountered during analysis summary data uploads
+
+        Returns:
+            None
+        """
         
         week = self.week
         run_number = self.run_number
@@ -1219,8 +1380,18 @@ class Load_To_Strapi:
             print("No errors found\n\n")  
 
 
-    def load_entries_to_strapi(self, error_dict, pluralapi, entry_list):
+    def load_entries_to_strapi(self, error_dict, pluralapi, entry_list) -> None:
+        """
+        Loads entries to strapi
 
+        Args:
+            error_dict (dict): Dictionary to store errors
+            pluralapi (str): Pluralapi for strapi table into which entries are to be loaded
+            entry_list (list): List of records to be loaded to strapi
+
+        Returns:
+            None
+        """
         base_url = self.base_url
         strapi_token = self.strapi_token
         week = self.week
@@ -1308,7 +1479,16 @@ class Load_To_Strapi:
         print("Done loading entries to {}\n".format(pluralapi))
 
 
-    def run_to_load(self):
+    def run_to_load(self) -> None:
+        """
+        Runs the load process
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
         counter = 0
         repo_table_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "branch":[], "error":[]}
         assignment_table_error_dict = {"trainee_id":[], "user":[], "repo_name":[], "branch":[], "assignment_id":[], "error":[]}
