@@ -631,7 +631,6 @@ def get_file_checks(exclude_list, file_extensions, files_to_check, dirs_to_check
     dir_checks = {dir.lower(): False for dir in dirs_to_check}
 
     for i in os.walk(path):
-<<<<<<< HEAD
         check_list = [True if i[0].lower().__contains__("/" + e.lower()+ "/")
                     or i[0].lower().startswith("./" + e.lower() + "/") 
                     or i[0].lower() == e.lower() 
@@ -639,15 +638,6 @@ def get_file_checks(exclude_list, file_extensions, files_to_check, dirs_to_check
 
         if sum(check_list) == 0 or len(exclude_roots) == 0:
             
-=======
-        check_list = [True if i[0].lower().__contains__("/" + e.lower() + "/")
-                      or i[0].lower().startswith("./" + e.lower() + "/")
-                      or i[0].lower() == e.lower()
-                      else False for e in exclude_roots]
-
-        if sum(check_list) == 0 or len(exclude_roots) == 0:
-
->>>>>>> 90c19df (Adds Doc string to functions used by the api)
             dirs = i[1]
             _files = i[2]
 
@@ -659,13 +649,8 @@ def get_file_checks(exclude_list, file_extensions, files_to_check, dirs_to_check
             for ig in exclude:
                 # remove files from the directories to exclude
                 for f in _files:
-<<<<<<< HEAD
                      if f.lower().startswith("./" + ig.lower() + "/") or f.lower() == ig.lower() or f.lower().__contains__("/" + ig.lower() + "/"):
                          _files.remove(f)
-=======
-                    if f.lower().startswith("./" + ig.lower() + "/") or f.lower() == ig.lower() or f.lower().__contains__("/" + ig.lower() + "/"):
-                        _files.remove(f)
->>>>>>> 90c19df (Adds Doc string to functions used by the api)
                 # remove the directories to exclude
                 try:
                     dirs.remove(ig)
@@ -692,10 +677,6 @@ def get_file_checks(exclude_list, file_extensions, files_to_check, dirs_to_check
         else:
             pass
             #print ("{} is excluded\n".format(i[0]))
-<<<<<<< HEAD
-
-=======
->>>>>>> 90c19df (Adds Doc string to functions used by the api)
 
     checks_results_dict = dict()
     checks_results_dict["interested_files"] = file_checks
@@ -1325,22 +1306,13 @@ def get_repo_level_summary(file_level) -> dict:
         if "error" not in file_level[k].keys():
             f_key = list(file_level[k].keys())
             break
-<<<<<<< HEAD
     
-=======
-
->>>>>>> 90c19df (Adds Doc string to functions used by the api)
     selected_key = list(file_level[f_level_keys[0]].keys())
 
     if len(f_key) > 0:
         selected_key = f_key
-<<<<<<< HEAD
     
     repo_summary = {k:[] for k in selected_key if not k.endswith("_rank")}
-=======
-
-    repo_summary = {k: [] for k in selected_key if not k.endswith("_rank")}
->>>>>>> 90c19df (Adds Doc string to functions used by the api)
     for k in repo_summary.keys():
         for f in file_level:
             if not f.__contains__("changed_") and k in file_level[f].keys():
