@@ -206,7 +206,7 @@ def get_single_repo_pyanalysis(user, token, repo_name, api=True)->json:
                 # get file level summary for code metrics
                 analysis_results["file_level"] = get_file_level_summary(analysis_results, additions_dict)
                 # get aggregate values of code metrics for repo
-                analysis_results["repo_summary"] = get_repo_level_summary(files, analysis_results["file_level"])
+                analysis_results["repo_summary"] = get_repo_level_summary(analysis_results["file_level"])
                 
                 # delete repository directory after checking code metrics
                 os.chdir("../../")
