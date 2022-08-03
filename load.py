@@ -9,10 +9,10 @@ from modules.Prepare_Assignment_Submissions import PrepareAssignmentDf
 from modules.Treat_Assignment_Response import Get_Assignment_Data
 
 
-# curdir = os.path.dirname(os.path.realpath(__file__))
-# cpath = os.path.dirname(curdir)
-# if not cpath in sys.path:
-#     sys.path.append(cpath)
+curdir = os.path.dirname(os.path.realpath(__file__))
+cpath = os.path.dirname(curdir)
+if not cpath in sys.path:
+    sys.path.append(cpath)
 
 
   
