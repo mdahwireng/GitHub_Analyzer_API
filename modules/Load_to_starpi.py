@@ -7,7 +7,7 @@ from app import get_user
 import pytz
 from dateutil import parser
 
-from modules.analyzer_utils import get_break_points, get_metric_category, get_metric_summary_dict, get_repo_meta_pyanalysis, send_graphql_query
+from modules.analyzer_utils import get_break_points, get_metric_category, get_metric_summary_dict, get_repo_meta_repo_analysis, send_graphql_query
 from modules.strapi_methods import get_table_data_strapi, get_trainee_data, insert_data_strapi, update_data_strapi
 
 
@@ -115,7 +115,7 @@ class Load_To_Strapi:
     methods:
         __init__: initializes the class
         get_analysis_data: Gets analysis data from api
-                            Returns a dictionary of analysis data with repo meta, repo_analysis_metrics and commit_history as keys
+                            Returns a dictionary of analysis data with repo meta, repo_analysis_metrics, commit_history and user as keys
         load_repo_meta_and_repo_to_strapi: Loads data to repo and repo_meta tables in strapi
         load_user_meta_to_strapi: Loads user meta data to strapi
         load_commit_history_to_strapi: Loads commit history data to strapi
@@ -144,7 +144,7 @@ class Load_To_Strapi:
             strapi_token (str): strapi token
             columns_dict (dict): columns dictionary
             default_vals_dict (dict): default values dictionary
-            run_type (str): run type
+            run_type (str): run type, indicates if the run is for main or for error fixing run, default is main
             metrics_detail_dict (dict): metrics detail dictionary
             cat_list (list): category list
             
@@ -184,7 +184,7 @@ class Load_To_Strapi:
     def get_analysis_data(self, user, repo_name, branch) -> dict:
         """
         Gets analysis data from api
-        Returns a dictionary of analysis data with repo meta, repo_analysis_metrics and commit_history as keys
+        Returns a dictionary of analysis data with repo meta, repo_analysis_metrics, commit_history and user as keys
         
         Args:
             user (str): user name
@@ -196,13 +196,13 @@ class Load_To_Strapi:
         """
         # get repo meta data and analysis data
         hld = dict()
-        repo_meta_repo_pyanalysis = get_repo_meta_pyanalysis(user, self.github_token, repo_name, branch)
+        repo_meta_repo_analysis = get_repo_meta_repo_analysis(user, self.github_token, repo_name, branch)
 
-        hld["repo_meta"] = repo_meta_repo_pyanalysis["repo_meta"]
+        hld["repo_meta"] = repo_meta_repo_analysis["repo_meta"]
 
-        hld["repo_anlysis_metrics"] = repo_meta_repo_pyanalysis["repo_anlysis_metrics"]
+        hld["repo_anlysis_metrics"] = repo_meta_repo_analysis["repo_anlysis_metrics"]
 
-        hld["commit_history"] = repo_meta_repo_pyanalysis["commit_history"]
+        hld["commit_history"] = repo_meta_repo_analysis["commit_history"]
 
 
         """if len(trainee_df[trainee_df["trainee_id"]==trainee_id]) == 0:

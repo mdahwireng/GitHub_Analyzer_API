@@ -5,7 +5,7 @@ import time
 import os
 import sys
 
-from app import get_user, retrieve_commit_history, single_repos_meta_single_repos_pyanalysis
+from app import get_user, retrieve_commit_history, single_repos_meta_single_repos_analysis
 from modules.graphql import GraphQLClient
 
 github_token = None
@@ -110,7 +110,7 @@ def get_repo_meta_repo_pymetrics_url(api_root, username, token, repo_name):
     Returns:
         str: The url. 
     """
-    url = "{}/single_repos_meta_single_repos_pyanalysis/{}/{}/{}".format(api_root, username, token, repo_name)
+    url = "{}/single_repos_meta_single_repos_analysis/{}/{}/{}".format(api_root, username, token, repo_name)
     return url
 
 
@@ -213,15 +213,15 @@ def get_github_analysis_dict(github_df, token=github_token)->dict:
             time.sleep(60)
             print("Resumed...\n")
 
-        repo_meta_repo_pyanalysis = single_repos_meta_single_repos_pyanalysis(user, token, repo_name, api=False)
+        repo_meta_repo_analysis = single_repos_meta_single_repos_analysis(user, token, repo_name, api=False)
 
         hld["user"] = get_user(user, token, api=False)
-        hld["repo_meta"] = repo_meta_repo_pyanalysis["repo_meta"]
+        hld["repo_meta"] = repo_meta_repo_analysis["repo_meta"]
 
         try:
-            hld["repo_anlysis_metrics"] = repo_meta_repo_pyanalysis["analysis_results"]["repo_summary"]
+            hld["repo_anlysis_metrics"] = repo_meta_repo_analysis["analysis_results"]["repo_summary"]
         except:
-            hld["repo_anlysis_metrics"] = repo_meta_repo_pyanalysis["analysis_results"]
+            hld["repo_anlysis_metrics"] = repo_meta_repo_analysis["analysis_results"]
 
         _dict[userid] =  hld
         counter += 1
@@ -450,7 +450,7 @@ def get_break_points(series, cat_list=[0.99, 0.9, 0.75, 0.5], reverse=False, _ad
 
 
 # get repo meta data and analysis data
-def get_repo_meta_pyanalysis(user, github_token, repo_name, branch)->dict:
+def get_repo_meta_repo_analysis(user, github_token, repo_name, branch)->dict:
     """
     Gets the repo meta data and analysis data.
     Returns the repo meta data and analysis data.
@@ -463,22 +463,22 @@ def get_repo_meta_pyanalysis(user, github_token, repo_name, branch)->dict:
     Returns:
         dict: The repo meta data and analysis data.
     """
-    repo_meta_repo_pyanalysis = single_repos_meta_single_repos_pyanalysis(user, github_token, repo_name, branch, api=False)
+    repo_meta_repo_analysis = single_repos_meta_single_repos_analysis(user, github_token, repo_name, branch, api=False)
 
     hld = dict()
     try:
-        real_repo_name = [name for name in repo_meta_repo_pyanalysis["repo_meta"] if repo_name.lower() == name.lower()]
-        hld["repo_meta"] = repo_meta_repo_pyanalysis["repo_meta"][real_repo_name[0]]
+        real_repo_name = [name for name in repo_meta_repo_analysis["repo_meta"] if repo_name.lower() == name.lower()]
+        hld["repo_meta"] = repo_meta_repo_analysis["repo_meta"][real_repo_name[0]]
 
     except:
-        hld["repo_meta"] = repo_meta_repo_pyanalysis["repo_meta"]
+        hld["repo_meta"] = repo_meta_repo_analysis["repo_meta"]
 
     try:
-        hld["repo_anlysis_metrics"] = repo_meta_repo_pyanalysis["analysis_results"]
+        hld["repo_anlysis_metrics"] = repo_meta_repo_analysis["analysis_results"]
     except:
-        hld["repo_anlysis_metrics"] = repo_meta_repo_pyanalysis["analysis_results"]
+        hld["repo_anlysis_metrics"] = repo_meta_repo_analysis["analysis_results"]
 
-    hld["commit_history"] = repo_meta_repo_pyanalysis["commit_history"]
+    hld["commit_history"] = repo_meta_repo_analysis["commit_history"]
 
     return hld
 
