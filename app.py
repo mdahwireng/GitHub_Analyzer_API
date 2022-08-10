@@ -369,7 +369,7 @@ def single_repos_meta_single_repos_analysis(user, token, repo_name, branch, api=
                     # get file level summary for code metrics
                     analysis_results["file_level"] = get_file_level_summary(analysis_results, additions_dict)
                     # get aggregate values of code metrics for repo
-                    analysis_results["repo_summary"] = get_repo_level_summary(files, analysis_results["file_level"])
+                    analysis_results["repo_summary"] = get_repo_level_summary(analysis_results["file_level"])
                     # get filtered file level changes
                     file_paths = [tup[0][2:] for tup in files]
                     cat_file_level_py = get_categorized_file_level_py(file_paths=file_paths, file_level_analysis=analysis_results["file_level"], converted_nbs=converted_nbs)

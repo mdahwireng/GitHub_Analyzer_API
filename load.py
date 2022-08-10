@@ -16,7 +16,7 @@ if not cpath in sys.path:
 
 
   
-from modules.analyzer_utils import  get_repo_meta_pyanalysis
+from modules.analyzer_utils import   get_repo_meta_repo_analysis
 
 
 
@@ -123,7 +123,7 @@ if github_token and strapi_token:
                 combined_keys = interested_repo_meta_keys + interested_repo_analysis_keys
 
                 # get the repo analysis data
-                starter_repo_data = get_repo_meta_pyanalysis(starter_user_name, github_token, starter_repo_name)
+                starter_repo_data = get_repo_meta_repo_analysis(starter_user_name, github_token, starter_repo_name)
                 starter_code_data = dict()
                 
                 if len(starter_repo_data["repo_meta"]) > 1:
@@ -158,7 +158,7 @@ if github_token and strapi_token:
             sys.exit(1)
         
         else:
-            print("There was an error retrieving assignment data".format(assignmnent_data_df["error"]))
+            print("There was an error retrieving assignment data :\n{}".format(assignmnent_data_df["error"]))
             sys.exit(1)
 
 else:

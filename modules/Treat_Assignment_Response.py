@@ -1,4 +1,5 @@
 import json
+import sys
 import pandas as pd
 from datetime import datetime
 from dateutil import parser
@@ -132,7 +133,7 @@ class Get_Assignment_Data:
 
             return resp.json()
         except Exception as e:
-            return {"error": e} # return error message if any
+            return {"error": repr(e)} # return error message if any
 
     
     def link_root(self, lnk) -> str:
@@ -178,66 +179,75 @@ class Get_Assignment_Data:
         default_due_date = datetime.now().replace(tzinfo=utc)
         run_date = datetime.now().replace(tzinfo=utc)
         
-        for asn in assignments["data"]['assignments']["data"]:
-            for dt in asn['attributes']['assignment_submission_content']:
-                due_date = asn["attributes"]["assignment_category"]["data"]["attributes"]["due_date"]
-                
-                assignment_name = asn['attributes']['assignment_category']['data']['attributes']['name']
+        if "error" in assignments:
+            sys.exit("Error: {}".format(assignments["error"]))
+        
+        
+        if assignments["data"]:
 
-                if not due_date:
-                    due_date = default_due_date
-                else:
-                    due_date = parser.parse(due_date).replace(tzinfo=utc)
-                
-                
-                
-                if dt['type'] == "github-link" and due_date < run_date and assignment_name not in self.previous_analyzed_assignments:
+            for asn in assignments["data"]['assignments']["data"]:
+                for dt in asn['attributes']['assignment_submission_content']:
+                    due_date = asn["attributes"]["assignment_category"]["data"]["attributes"]["due_date"]
                     
-                    lnk = dt['url']
-                    root = self.link_root(lnk)
-                    dt.update({"root_url":root})
-                    trainee_data = asn['attributes']["trainee"]["data"]
-                    trainee = trainee_data["id"]
-                    trainee_id = trainee_data["attributes"]["trainee_id"]
-                    assignment_id = asn['id']
-                    
-                    if assignment_name not in analyzed_assignments:
+                    assignment_name = asn['attributes']['assignment_category']['data']['attributes']['name']
 
-                        print("\nAnalyzing {}\n".format(assignment_name))
-
-                    
-                    if trainee_id not in subs_dict:
-                        subs_dict[trainee_id] = {"final":[], "interim":[], "other":[]}
-                    
-                    if "final" in assignment_name.lower():
-                        subs_dict[trainee_id]["final"].append(lnk)
-                    elif "interim" in assignment_name.lower():
-                        subs_dict[trainee_id]["interim"].append(lnk)
+                    if not due_date:
+                        due_date = default_due_date
                     else:
-                        subs_dict[trainee_id]["other"].append(lnk)
+                        due_date = parser.parse(due_date).replace(tzinfo=utc)
                     
                     
-                    if trainee_id not in details.keys():
-                        details[trainee_id] = {}
+                    
+                    if dt['type'] == "github-link" and due_date < run_date and assignment_name not in self.previous_analyzed_assignments:
+                        
+                        lnk = dt['url']
+                        root = self.link_root(lnk)
+                        dt.update({"root_url":root})
+                        trainee_data = asn['attributes']["trainee"]["data"]
+                        trainee = trainee_data["id"]
+                        trainee_id = trainee_data["attributes"]["trainee_id"]
+                        assignment_id = asn['id']
+                        
+                        if assignment_name not in analyzed_assignments:
 
-                    if "root_url" not in details[trainee_id].keys():
-                        details[trainee_id]["root_url"] = []
-                    
-                    if "assignments_ids" not in details[trainee_id].keys():
-                        details[trainee_id]["assignments_ids"] = set()
+                            print("\nAnalyzing {}\n".format(assignment_name))
 
-                    if "trainee" not in details[trainee_id].keys():
-                        details[trainee_id]["trainee"] = trainee
-                    
-                    details[trainee_id]["root_url"].append(root)
-                    details[trainee_id]["assignments_ids"].add(assignment_id)
-                    
-                    analyzed_assignments.add(assignment_name)
-         
-        self.analyzed_assignments = set(analyzed_assignments)
-        self.subs_dict = subs_dict
+                        
+                        if trainee_id not in subs_dict:
+                            subs_dict[trainee_id] = {"final":[], "interim":[], "other":[]}
+                        
+                        if "final" in assignment_name.lower():
+                            subs_dict[trainee_id]["final"].append(lnk)
+                        elif "interim" in assignment_name.lower():
+                            subs_dict[trainee_id]["interim"].append(lnk)
+                        else:
+                            subs_dict[trainee_id]["other"].append(lnk)
+                        
+                        
+                        if trainee_id not in details.keys():
+                            details[trainee_id] = {}
 
-        return details
+                        if "root_url" not in details[trainee_id].keys():
+                            details[trainee_id]["root_url"] = []
+                        
+                        if "assignments_ids" not in details[trainee_id].keys():
+                            details[trainee_id]["assignments_ids"] = set()
+
+                        if "trainee" not in details[trainee_id].keys():
+                            details[trainee_id]["trainee"] = trainee
+                        
+                        details[trainee_id]["root_url"].append(root)
+                        details[trainee_id]["assignments_ids"].add(assignment_id)
+                        
+                        analyzed_assignments.add(assignment_name)
+            
+            self.analyzed_assignments = set(analyzed_assignments)
+            self.subs_dict = subs_dict
+
+            return details
+        
+        else:
+            sys.exit("Error: No assignments found")
 
 
     
@@ -289,7 +299,7 @@ class Get_Assignment_Data:
             data_df = pd.DataFrame(filtered_assignment_data_records)
             return data_df
         except Exception as e:
-            return {"error": e}
+            return {"error": repr(e)}
 
     def get_analyzed_assignments(self):
         """
