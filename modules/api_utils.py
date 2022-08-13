@@ -442,21 +442,24 @@ def retrieve_diff_details(stdout) -> tuple:
     lines = stdout.split("\n")
     file1 = []
     file2 = []
-
-    for line in lines:
-        if line.startswith("- "):
-            file1.append(line[1:])
-
-        if line.startswith("+ "):
-            file2.append(line[1:])
     
-    for line in file1:
-        if line in file2:
-            file2.remove(line)
-    
-    try:
-        return len(file2), [i[1:] for i in lines if i.startswith("+ ")]
-    except:
+    if len(lines) > 5:
+        for line in lines[5:]:
+            if line.startswith("-"):
+                file1.append(line[1:])
+
+            if line.startswith("+"):
+                file2.append(line[1:])
+        
+        for line in file1:
+            if line in file2:
+                file2.remove(line)
+        
+        try:
+            return len(file2), [i[1:] for i in lines[5:] if i.startswith("+")]
+        except:
+            return 0, [""]
+    else:
         return 0, [""]
 
 
