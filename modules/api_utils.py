@@ -440,23 +440,23 @@ def retrieve_diff_details(stdout) -> tuple:
     """
     # split the output into lines
     lines = stdout.split("\n")
+    file1 = []
+    file2 = []
 
-    if len(lines) > 5:
-        # retireve additions from line with addition details
-        try:
-            additions = lines[4].split(" ")[2][1:].replace("+", "")
-        except:
-            additions = "0"
+    for line in lines:
+        if line.startswith("- "):
+            file1.append(line[1:])
 
-        # replace commas in additions quantity
-        if "," in additions:
-            additions = additions.replace(",", "")
-
-        try:
-            return int(additions), [i[1:] for i in lines[4:] if i.startswith("+")]
-        except:
-            return 0, [""]
-    else:
+        if line.startswith("+ "):
+            file2.append(line[1:])
+    
+    for line in file1:
+        if line in file2:
+            file2.remove(line)
+    
+    try:
+        return len(file2), [i[1:] for i in lines if i.startswith("+ ")]
+    except:
         return 0, [""]
 
 
