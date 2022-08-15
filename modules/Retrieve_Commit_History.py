@@ -91,6 +91,8 @@ class Retrieve_Commit_History:
         self.merged = False 
         self.html_link = None 
         self.branch_not_found = False
+        self.default_branch_not_found = False
+        self.specified_branch_not_found = False
 
         print("Retrieving commit logs...\n")
 
@@ -126,10 +128,17 @@ class Retrieve_Commit_History:
                         self.log = log
 
             else:
-                    print("\nError: Branch does not exist\n")
-                    self.branch_not_found = True
-                    self.log = ""
-                    self.n_commit_default_to_branch = None
+                self.log = ""
+                self.n_commit_default_to_branch = None
+                self.branch_not_found = True
+
+                if checkout_default_branch_return_code != 0:
+                    print("\nError: Default branch does not exist\n")
+                    self.default_branch_not_found = True
+                
+                if checkout_branch_return_code != 0:
+                    print("\nError: Specified branch does not exist\n")
+                    self.specified_branch_not_found = True
             
         else:
             if not self.branch_not_found:
@@ -411,4 +420,9 @@ class Retrieve_Commit_History:
 
         else:
             print("\nCommit history retreival failed\n")
-            return {"error": "Specified branch does not exist"}
+            if self.specified_branch_not_found and self.default_branch_not_found:
+                return {"error": "Default branch: {}\nSpecified branch: {} \nBoth do not exist".format(self.default_branch, self.branch)}
+            elif self.specified_branch_not_found:
+                return {"error": "Specified branch: {} \nDoes not exist".format(self.branch)}
+            else:
+                return {"error": "Default branch: {} \nDoes not exist".format(self.default_branch)}
