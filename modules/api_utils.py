@@ -766,7 +766,7 @@ def convert_nb_to_py(path_list):
     return out_dict
 
 
-def run_to_get_adds_and_save_content(user, repo_name, repo_dict, file_ext, branch, token, path="./") -> tuple:
+def run_to_get_adds_and_save_content(user, repo_name, repo_dict, file_ext, token, branch=None, path="./") -> tuple:
     """
     Abstract a processes involved from cloning and retrieving of commit shas to comparing changes that has occured between
     the first and current commits as well as retrieval of commit history on a given branch.
@@ -779,7 +779,7 @@ def run_to_get_adds_and_save_content(user, repo_name, repo_dict, file_ext, branc
         path(str): path to the directory where search is to be done recursively, default = "./"
         file_ext(lst): file extention of files to look for with the "." included
                         example ".py"
-        branch(str): the branch to be used for the analysis
+        branch(str): the branch to be used for the analysis, default = "None"
         token(str): the github token to be used for the analysis
 
     Returns:
