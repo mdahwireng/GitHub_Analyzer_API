@@ -95,19 +95,26 @@ class Retrieve_Commit_History:
         print("Retrieving commit logs...\n")
 
         if branch_dict:
+            
             self.default_branch = self.branch_dict['default']
             self.branch = self.branch_dict['branch']
 
-            if self.branch == self.default_branch:
-                self.log = run_cmd_process(cmd_list=["git", "log", '--pretty=format:**%H##%ct##%aN##%s', "--raw", "--stat"])[0]
-                self.n_commit_default_to_branch = len(self.log.split("**"))-1
+            curent_branch = get_git_branch()
+            
+            if curent_branch != branch_dict["default"]:
+                checkout_default_branch_return_code = run_cmd_process(cmd_list=["git", "checkout", self.default_branch])[2]
+                checkout_branch_return_code = run_cmd_process(cmd_list=["git", "checkout", self.branch])[2]
+            
             else:
+                checkout_default_branch_return_code = 0
                 checkout_branch_return_code = run_cmd_process(cmd_list=["git", "checkout", self.branch])[2]
 
-                if  checkout_branch_return_code != 0:
-                    print("\nError: Branch does not exist\n")
-                    self.branch_not_found = True
-                    self.log = []
+
+            if checkout_default_branch_return_code == 0 and checkout_branch_return_code == 0:
+                if self.branch == self.default_branch:
+                    self.log = run_cmd_process(cmd_list=["git", "log", '--pretty=format:**%H##%ct##%aN##%s', "--raw", "--stat"])[0]
+                    self.n_commit_default_to_branch = len(self.log.split("**"))-1
+                
                 else:
                     log = run_cmd_process(cmd_list=["git", "log", "{}..{}".format(self.default_branch, self.branch), '--pretty=format:**%H##%ct##%aN##%s', "--raw", "--stat"])[0]
                     if log == "":
@@ -117,6 +124,12 @@ class Retrieve_Commit_History:
                         self.n_commit_default_to_branch = len(self.log.split("**"))-1
                     else:
                         self.log = log
+
+            else:
+                    print("\nError: Branch does not exist\n")
+                    self.branch_not_found = True
+                    self.log = ""
+                    self.n_commit_default_to_branch = None
             
         else:
             if not self.branch_not_found:
@@ -125,7 +138,7 @@ class Retrieve_Commit_History:
                 self.log = run_cmd_process(cmd_list=["git", "log", '--pretty=format:**%H##%ct##%aN##%s', "--raw", "--stat"])[0]
                 self.n_commit_default_to_branch = len(self.log.split("**"))-1
             else:
-                self.log = []
+                self.log = ""
                 self.n_commit_default_to_branch = None
 
         if not self.branch_not_found:
