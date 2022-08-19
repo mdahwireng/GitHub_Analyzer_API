@@ -15,11 +15,11 @@ if not cpath in sys.path:
     sys.path.append(cpath)
 
  
-from modules.analyzer_utils import get_repo_meta_pyanalysis 
+from modules.analyzer_utils import get_repo_meta_repo_analysis 
 
 
 
-platform = "dev"
+platform = "stage"
 
 if os.path.exists(".env/secret.json"):
     with open(".env/secret.json", "r") as s:
@@ -63,7 +63,7 @@ if github_token and strapi_token:
     
     
     
-    error_fix_file_path = "data/error_fix/{}/b{}_{}_run{}_error_fix.csv".format(platform, batch, week, run_number)
+    error_fix_file_path = "data/error_fix/batch{}/{}/{}/b{}_{}_run{}_error_fix.csv".format(batch, week,platform, batch, week, run_number)
     github_df = pd.read_csv(error_fix_file_path)
     github_df = github_df.drop_duplicates(subset=["trainee_id"])
     github_df = github_df.replace({np.nan: None})
@@ -102,7 +102,7 @@ if github_token and strapi_token:
                 combined_keys = interested_repo_meta_keys + interested_repo_analysis_keys
 
                 # get the repo analysis data
-                starter_repo_data = get_repo_meta_pyanalysis(starter_user_name, github_token, starter_repo_name)
+                starter_repo_data = get_repo_meta_repo_analysis(starter_user_name, github_token, starter_repo_name)
                 starter_code_data = dict()
                 
                 if len(starter_repo_data["repo_meta"]) > 1:
