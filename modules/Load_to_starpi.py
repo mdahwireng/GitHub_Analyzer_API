@@ -1111,8 +1111,8 @@ class Load_To_Strapi:
                 
                 for col in rank_dict:
                     val = row[col]
+                    break_points = cat_dict[col]["break_points"]
                     if val != None and not pd.isna(val) :
-                        break_points = cat_dict[col]["break_points"]
                         if col != "cc":
                             rank_dict[col] = get_metric_category(val=val, break_points=break_points, reverse=False)
                         else:
