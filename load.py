@@ -16,11 +16,12 @@ if not cpath in sys.path:
 
 
   
-from modules.analyzer_utils import  get_repo_meta_pyanalysis
+from modules.analyzer_utils import   get_repo_meta_repo_analysis
 
 
 
-platform = "prod"
+
+platform = "dev"
 
 if os.path.exists(".env/secret.json"):
     with open(".env/secret.json", "r") as s:
@@ -48,7 +49,8 @@ if github_token and strapi_token:
         print("\nThe state file does not exit and system will exit now...\n")
         sys.exit(1)
 
-    current_week = datetime.now().isocalendar()[1] - 0
+
+    current_week = datetime.now().isocalendar()[1] - 5
     training_week = current_week - 18
     
     week= "week{}".format(training_week)
@@ -85,9 +87,13 @@ if github_token and strapi_token:
 
 
         prep_assn = PrepareAssignmentDf(assignmnent_data_df, run_number, "root_url")
+
+        now_date = datetime.now()
+        now_folder = now_date.strftime("%Y-%m-%d")
+        now_str = now_date.strftime("%Y-%m-%d_%H-%M-%S")
         
-        week_submission_dir = "data/week_data/batch{}/{}/{}/run{}".format(batch, week, platform, run_number)
-        week_submission_path = week_submission_dir + "/b{}_{}_{}_run{}.csv".format(batch, week, platform, run_number)
+        week_submission_dir = "data/week_data/batch{}/{}/{}/{}/run{}".format(batch, week, platform,now_folder,run_number)
+        week_submission_path = week_submission_dir + "/b{}_{}_{}_run{}_{}.csv".format(batch, week, platform, run_number, now_str)
         
         if not os.path.isdir(week_submission_dir):
             os.makedirs(week_submission_dir)
@@ -119,7 +125,7 @@ if github_token and strapi_token:
                 combined_keys = interested_repo_meta_keys + interested_repo_analysis_keys
 
                 # get the repo analysis data
-                starter_repo_data = get_repo_meta_pyanalysis(starter_user_name, github_token, starter_repo_name)
+                starter_repo_data = get_repo_meta_repo_analysis(starter_user_name, github_token, starter_repo_name)
                 starter_code_data = dict()
                 
                 if len(starter_repo_data["repo_meta"]) > 1:
@@ -154,7 +160,7 @@ if github_token and strapi_token:
             sys.exit(1)
         
         else:
-            print("There was an error retrieving assignment data".format(assignmnent_data_df["error"]))
+            print("There was an error retrieving assignment data :\n{}".format(assignmnent_data_df["error"]))
             sys.exit(1)
 
 else:
