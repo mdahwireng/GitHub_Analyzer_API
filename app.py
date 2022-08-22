@@ -369,15 +369,6 @@ def single_repos_meta_single_repos_analysis(user, token, repo_name, branch, api=
                     # get file level summary for code metrics
                     analysis_results["file_level"] = get_file_level_summary(analysis_results, additions_dict)
                     # get aggregate values of code metrics for repo
-<<<<<<< HEAD
-                    analysis_results["repo_summary"] = get_repo_level_summary(files, analysis_results["file_level"])
-                    # get filtered file level changes
-                    file_paths = [tup[0][2:] for tup in files]
-                    commit_history_dict["file_level"] = get_categorized_file_level_py(file_paths=file_paths, file_level_analysis=analysis_results["file_level"], converted_nbs=converted_nbs)
-                
-                else:
-                    analysis_results = {"error":"No Python files found"}
-=======
                     analysis_results["repo_summary"] = get_repo_level_summary(analysis_results["file_level"])
                     # get filtered file level changes
                     file_paths = [tup[0][2:] for tup in files]
@@ -385,7 +376,6 @@ def single_repos_meta_single_repos_analysis(user, token, repo_name, branch, api=
                     commit_history_dict["file_level"] = cat_file_level_py
                     analysis_results["file_level"] = cat_file_level_py
 
->>>>>>> js_analysis
 
                 if file_check_results["num_js"] > 0:
                     # if there is atleast one javascript file run analysis for javascript codes
