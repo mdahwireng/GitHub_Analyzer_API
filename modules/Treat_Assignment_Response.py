@@ -1,4 +1,5 @@
 import json
+import sys
 import pandas as pd
 from datetime import datetime
 from dateutil import parser
@@ -7,7 +8,36 @@ import requests
 
 
 class Get_Assignment_Data:
-    def __init__(self, week, batch, base_url, token, previous_analyzed_assignments=[]):
+    """
+    Retrieves assignment submission data from assignment table
+    
+    methods:
+        __init__: initializes the class
+        send_get_req: sends a get request given a url and a header(optional) and returns a tuple of response and
+        get_assignment_data: gets assignment data from assignment table
+        link_root: retrieves the root of a given link
+        get_filtered_assignment_data: creates a dataframe from the filtered assignment data into a list of records.
+        get_filtered_assignment_data_records: creates a dataframe from the filtered assignment data into a list of records.
+        filtered_data_df: creates a dataframe from the filtered assignment data into a list of records.
+        get_analyzed_assignments: returns a list of assignments that have been analyzed
+    """
+    def __init__(self, week, batch, base_url, token, previous_analyzed_assignments=[]) -> None:
+        """
+        Initializes the class
+        
+        Args:
+            week(str): week number
+            batch(int): batch number
+            base_url(str): base url of the server
+            token(str): token to be used for authentication
+            previous_analyzed_assignments(list): list of assignments that have been analyzed
+            link_root(str): root of the link
+
+
+        Returns:
+            None
+        """
+
         self.week = week
         self.batch = batch
         self.base_url = base_url
@@ -36,9 +66,16 @@ class Get_Assignment_Data:
 
 
 
-    def get_assignment_data(self):
+    def get_assignment_data(self) -> list or dict:
         """
         Gets assignment data from assignment table
+        Returns a list of assignments retrieved from strapi assignment tale or a dictionary with error message
+
+        Args:
+            None
+
+        Returns:
+            a list of assignments retrieved from strapi assignment tale or a dictionary with error message 
         """
 
         week = "week "+ self.week[4:]
@@ -96,10 +133,20 @@ class Get_Assignment_Data:
 
             return resp.json()
         except Exception as e:
-            return {"error": e} # return error message if any
+            return {"error": repr(e)} # return error message if any
 
     
-    def link_root(self, lnk):
+    def link_root(self, lnk) -> str:
+        """
+        Retrieves the root of a given link.
+        Returns the root of the link or an empty string if the link is empty
+
+        Args:
+            lnk(str): link to be processed
+
+        Returns:
+            root of the link or an empty string if the link is empty
+        """
         if "blob" in lnk:
             lnk = lnk.replace("blob","tree")
 
@@ -114,7 +161,16 @@ class Get_Assignment_Data:
 
 
 
-    def get_filtered_assignment_data(self, assignments):
+    def get_filtered_assignment_data(self, assignments) -> dict:
+        """
+        Filters the assignment data and returns a dictionary with the filtered data
+
+        Args:
+            assignments(list): list of assignments retrieved from strapi assignment tale
+
+        Returns:
+            a dictionary with the filtered data
+        """
         details = {}
         subs_dict = {}
         analyzed_assignments = set()
@@ -123,70 +179,89 @@ class Get_Assignment_Data:
         default_due_date = datetime.now().replace(tzinfo=utc)
         run_date = datetime.now().replace(tzinfo=utc)
         
-        for asn in assignments["data"]['assignments']["data"]:
-            for dt in asn['attributes']['assignment_submission_content']:
-                due_date = asn["attributes"]["assignment_category"]["data"]["attributes"]["due_date"]
-                
-                assignment_name = asn['attributes']['assignment_category']['data']['attributes']['name']
+        if "error" in assignments:
+            sys.exit("Error: {}".format(assignments["error"]))
+        
+        
+        if assignments["data"]:
 
-                if not due_date:
-                    due_date = default_due_date
-                else:
-                    due_date = parser.parse(due_date).replace(tzinfo=utc)
-                
-                
-                
-                if dt['type'] == "github-link" and due_date < run_date and assignment_name not in self.previous_analyzed_assignments:
+            for asn in assignments["data"]['assignments']["data"]:
+                for dt in asn['attributes']['assignment_submission_content']:
+                    due_date = asn["attributes"]["assignment_category"]["data"]["attributes"]["due_date"]
                     
-                    lnk = dt['url']
-                    root = self.link_root(lnk)
-                    dt.update({"root_url":root})
-                    trainee_data = asn['attributes']["trainee"]["data"]
-                    trainee = trainee_data["id"]
-                    trainee_id = trainee_data["attributes"]["trainee_id"]
-                    assignment_id = asn['id']
-                    
-                    if assignment_name not in analyzed_assignments:
+                    assignment_name = asn['attributes']['assignment_category']['data']['attributes']['name']
 
-                        print("\nAnalyzing {}\n".format(assignment_name))
-
-                    
-                    if trainee_id not in subs_dict:
-                        subs_dict[trainee_id] = {"final":[], "interim":[], "other":[]}
-                    
-                    if "final" in assignment_name.lower():
-                        subs_dict[trainee_id]["final"].append(lnk)
-                    elif "interim" in assignment_name.lower():
-                        subs_dict[trainee_id]["interim"].append(lnk)
+                    if not due_date:
+                        due_date = default_due_date
                     else:
-                        subs_dict[trainee_id]["other"].append(lnk)
+                        due_date = parser.parse(due_date).replace(tzinfo=utc)
                     
                     
-                    if trainee_id not in details.keys():
-                        details[trainee_id] = {}
+                    
+                    if dt['type'] == "github-link" and due_date < run_date and assignment_name not in self.previous_analyzed_assignments:
+                        
+                        lnk = dt['url']
+                        root = self.link_root(lnk)
+                        dt.update({"root_url":root})
+                        trainee_data = asn['attributes']["trainee"]["data"]
+                        trainee = trainee_data["id"]
+                        trainee_id = trainee_data["attributes"]["trainee_id"]
+                        assignment_id = asn['id']
+                        
+                        if assignment_name not in analyzed_assignments:
 
-                    if "root_url" not in details[trainee_id].keys():
-                        details[trainee_id]["root_url"] = []
-                    
-                    if "assignments_ids" not in details[trainee_id].keys():
-                        details[trainee_id]["assignments_ids"] = set()
+                            print("\nAnalyzing {}\n".format(assignment_name))
 
-                    if "trainee" not in details[trainee_id].keys():
-                        details[trainee_id]["trainee"] = trainee
-                    
-                    details[trainee_id]["root_url"].append(root)
-                    details[trainee_id]["assignments_ids"].add(assignment_id)
-                    
-                    analyzed_assignments.add(assignment_name)
-         
-        self.analyzed_assignments = set(analyzed_assignments)
-        self.subs_dict = subs_dict
+                        
+                        if trainee_id not in subs_dict:
+                            subs_dict[trainee_id] = {"final":[], "interim":[], "other":[]}
+                        
+                        if "final" in assignment_name.lower():
+                            subs_dict[trainee_id]["final"].append(lnk)
+                        elif "interim" in assignment_name.lower():
+                            subs_dict[trainee_id]["interim"].append(lnk)
+                        else:
+                            subs_dict[trainee_id]["other"].append(lnk)
+                        
+                        
+                        if trainee_id not in details.keys():
+                            details[trainee_id] = {}
 
-        return details
+                        if "root_url" not in details[trainee_id].keys():
+                            details[trainee_id]["root_url"] = []
+                        
+                        if "assignments_ids" not in details[trainee_id].keys():
+                            details[trainee_id]["assignments_ids"] = set()
+
+                        if "trainee" not in details[trainee_id].keys():
+                            details[trainee_id]["trainee"] = trainee
+                        
+                        details[trainee_id]["root_url"].append(root)
+                        details[trainee_id]["assignments_ids"].add(assignment_id)
+                        
+                        analyzed_assignments.add(assignment_name)
+            
+            self.analyzed_assignments = set(analyzed_assignments)
+            self.subs_dict = subs_dict
+
+            return details
+        
+        else:
+            sys.exit("Error: No assignments found")
 
 
     
-    def get_filtered_assignment_data_records(self, filtered_assignment_data):
+    def get_filtered_assignment_data_records(self, filtered_assignment_data) -> list:
+        """
+        Creates a dataframe from the filtered assignment data into a list of records.
+        Each record is a dictionary with the trainee id, root url, and list of assignments ids
+
+        Args:
+            filtered_assignment_data(dict): dictionary with the filtered assignment data
+
+        Returns:
+            a list of records with the filtered assignment data
+        """
         asn_df_list = []
         for k,v in filtered_assignment_data.items():
             
@@ -206,7 +281,17 @@ class Get_Assignment_Data:
 
 
     
-    def filtered_data_df(self):
+    def filtered_data_df(self) -> pd.DataFrame or dict:
+        """
+        Creates a dataframe with the filtered assignment data records
+        Returns a dataframe of the filtered records or a dictionary with the error message if any
+
+        Args:
+            None
+
+        Returns:
+            a dataframe with the filtered records or a dictionary with the error message if any
+        """
         try:
             assignment_data = self.get_assignment_data()
             filtered_assignment_data = self.get_filtered_assignment_data(assignment_data)
@@ -214,7 +299,7 @@ class Get_Assignment_Data:
             data_df = pd.DataFrame(filtered_assignment_data_records)
             return data_df
         except Exception as e:
-            return {"error": e}
+            return {"error": repr(e)}
 
     def get_analyzed_assignments(self):
         """
