@@ -48,8 +48,8 @@ if github_token and strapi_token:
         sys.exit(1)
 
 
-    current_week = datetime.now().isocalendar()[1] - 10
-    training_week = current_week - 18
+    current_week = datetime.now().isocalendar()[1] - 0
+    training_week = current_week - 33
     
     week= "week{}".format(training_week)
     print("\nCurrent week is {}\n".format(week))
