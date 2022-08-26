@@ -10,7 +10,7 @@ if not os.path.isdir(st_dir):
                 os.makedirs(st_dir)
 
 state_dict = {
-                "batch":5, 
+                "batch":6, 
                 "run_number":1, 
                 "base_url":{
                             "dev":"https://dev-cms.10academy.org", 

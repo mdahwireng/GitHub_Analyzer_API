@@ -353,6 +353,7 @@ def run_cmd_process(cmd_list) -> tuple:
     return stdout, stderr, process.returncode
 
 
+
 def retriev_files(path, file_ext, exclude_list=[".git", ".ipynb_checkpoints", "__pycache__", "node_modules"]) -> list:
     """
     Takes the path to the directory where search is to be done recursively and 
@@ -377,6 +378,7 @@ def retriev_files(path, file_ext, exclude_list=[".git", ".ipynb_checkpoints", "_
 
     filter_list = ["lib", "bin", "etc", "include",
                    "share", "var", "lib64", "venv"]
+
     filter_list = list(set(filter_list + exclude_list))
     take_out = []
     for root in filter_list:
@@ -628,6 +630,8 @@ def get_file_checks(exclude_list, file_extensions, files_to_check, dirs_to_check
     """
     exclude = exclude_list
     exclude_roots = [i.lower() for i in exclude]
+
+
     count_dict = {"num_dirs": 0, "num_files": 0}
     extension_checks = {"num_" + ext.lower(): 0 for ext in file_extensions}
     file_checks = {f.lower(): False for f in files_to_check}
@@ -680,6 +684,7 @@ def get_file_checks(exclude_list, file_extensions, files_to_check, dirs_to_check
         else:
             pass
             #print ("{} is excluded\n".format(i[0]))
+
 
     checks_results_dict = dict()
     checks_results_dict["interested_files"] = file_checks
@@ -821,6 +826,7 @@ def run_to_get_adds_and_save_content(user, repo_name, repo_dict, file_ext, token
         commit_history_dict = ret_commit.get_commit_history_and_contributors()
 
         # check for the existence of files with the given file extension
+
         exclude_list = [".git", ".ipynb_checkpoints", "__pycache__", "node_modules",
                         "lib", "bin", "etc", "include", "share", "var", "lib64", "venv"]
         file_extensions = ["py", "js", "ipynb"]
@@ -1217,6 +1223,7 @@ metrics_descriptions_dict = {
 }
 
 important_metrics_list = ["loc", "num_functions", "num_classes", "num_methods"]
+
 
 ###########################################################################################################################
 

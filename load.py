@@ -20,6 +20,7 @@ from modules.analyzer_utils import   get_repo_meta_repo_analysis
 
 
 
+
 platform = "dev"
 
 if os.path.exists(".env/secret.json"):
@@ -48,8 +49,9 @@ if github_token and strapi_token:
         print("\nThe state file does not exit and system will exit now...\n")
         sys.exit(1)
 
-    current_week = datetime.now().isocalendar()[1] - 5
-    training_week = current_week - 18
+
+    current_week = datetime.now().isocalendar()[1] - 0
+    training_week = current_week - 33
     
     week= "week{}".format(training_week)
     print("\nCurrent week is {}\n".format(week))

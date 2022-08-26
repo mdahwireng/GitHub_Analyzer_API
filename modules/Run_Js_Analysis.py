@@ -58,6 +58,7 @@ class Run_Js_Analysis:
 
 
 
+
     def retrieve_file_level_analysis(self) -> None:
         """
         Retrieve the file level analysis
@@ -68,6 +69,7 @@ class Run_Js_Analysis:
             Returns:
                 None
             """
+
         for analysis in self.file_analysis:
             hld = analysis.__dict__
             hld["cc"] = analysis.average_cyclomatic_complexity
@@ -103,6 +105,7 @@ class Run_Js_Analysis:
             self.file_level.append(hld)
 
     
+
     def retrieve_repo_summary(self) -> None:
         """
         Retrieve the repo summary
@@ -113,6 +116,7 @@ class Run_Js_Analysis:
         Returns:
             None
         """
+
         keys = list(self.file_level[0].keys())
         keys.remove("func_details")
         keys.remove("file_name")
@@ -133,6 +137,7 @@ class Run_Js_Analysis:
         self.repo_summary = hld
 
     
+
     def run_analysis(self) -> dict:
         """
         Runs the analysis
@@ -143,6 +148,7 @@ class Run_Js_Analysis:
         Returns:
             dict: Repo summary
         """
+
         self.retrieve_file_level_analysis()
         self.retrieve_repo_summary()
         return {"repo_summary":self.repo_summary, "file_level":self.file_level}
