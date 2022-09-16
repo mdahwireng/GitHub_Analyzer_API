@@ -50,11 +50,15 @@ def get_git_branch():
     """
     Returns the current git branch
     """
-    # get branch name
+    #get branch name
     stdout, stderr, return_code = run_cmd_process(cmd_list=['git', 'branch'])
     if return_code == 0:
-        branch = [a for a in stdout.split('\n') if a.find('*') >= 0][0]
-        branch = branch.replace('*', '').strip()
+        branch_extract = [a for a in stdout.split('\n') if a.find('*') >= 0]
+        if len(branch_extract) > 0:
+            branch = branch_extract[0]
+            branch = branch.replace('*', '').strip()
+        else:
+            branch = None
     else:
         branch = None
     return branch
@@ -93,6 +97,7 @@ class Retrieve_Commit_History:
         self.branch_not_found = False
         self.default_branch_not_found = False
         self.specified_branch_not_found = False
+        self.no_branch = False
 
         print("Retrieving commit logs...\n")
 
@@ -103,45 +108,50 @@ class Retrieve_Commit_History:
 
             curent_branch = get_git_branch()
             
-            if curent_branch != branch_dict["default"]:
-                checkout_default_branch_return_code = run_cmd_process(cmd_list=["git", "checkout", self.default_branch])[2]
-                checkout_branch_return_code = run_cmd_process(cmd_list=["git", "checkout", self.branch])[2]
-            
-            else:
-                checkout_default_branch_return_code = 0
-                checkout_branch_return_code = run_cmd_process(cmd_list=["git", "checkout", self.branch])[2]
-
-
-            if checkout_default_branch_return_code == 0 and checkout_branch_return_code == 0:
-                if self.branch == self.default_branch:
-                    self.log = run_cmd_process(cmd_list=["git", "log", '--pretty=format:**%H##%ct##%aN##%s', "--raw", "--stat"])[0]
-                    self.n_commit_default_to_branch = len(self.log.split("**"))-1
+            if curent_branch:
+                
+                if curent_branch != branch_dict["default"]:
+                    checkout_default_branch_return_code = run_cmd_process(cmd_list=["git", "checkout", self.default_branch])[2]
+                    checkout_branch_return_code = run_cmd_process(cmd_list=["git", "checkout", self.branch])[2]
                 
                 else:
-                    log = run_cmd_process(cmd_list=["git", "log", "{}..{}".format(self.default_branch, self.branch), '--pretty=format:**%H##%ct##%aN##%s', "--raw", "--stat"])[0]
-                    if log == "":
-                        self.merged = True
-                        print("\nNo unique commits found for the branch {}. The branch may have been merged with {} (default branch)\n".format(self.branch, self.default_branch))
+                    checkout_default_branch_return_code = 0
+                    checkout_branch_return_code = run_cmd_process(cmd_list=["git", "checkout", self.branch])[2]
+
+
+                if checkout_default_branch_return_code == 0 and checkout_branch_return_code == 0:
+                    if self.branch == self.default_branch:
                         self.log = run_cmd_process(cmd_list=["git", "log", '--pretty=format:**%H##%ct##%aN##%s', "--raw", "--stat"])[0]
                         self.n_commit_default_to_branch = len(self.log.split("**"))-1
+                    
                     else:
-                        self.log = log
+                        log = run_cmd_process(cmd_list=["git", "log", "{}..{}".format(self.default_branch, self.branch), '--pretty=format:**%H##%ct##%aN##%s', "--raw", "--stat"])[0]
+                        if log == "":
+                            self.merged = True
+                            print("\nNo unique commits found for the branch {}. The branch may have been merged with {} (default branch)\n".format(self.branch, self.default_branch))
+                            self.log = run_cmd_process(cmd_list=["git", "log", '--pretty=format:**%H##%ct##%aN##%s', "--raw", "--stat"])[0]
+                            self.n_commit_default_to_branch = len(self.log.split("**"))-1
+                        else:
+                            self.log = log
 
-            else:
-                self.log = ""
-                self.n_commit_default_to_branch = None
-                self.branch_not_found = True
+                else:
+                    self.log = ""
+                    self.n_commit_default_to_branch = None
+                    self.branch_not_found = True
 
-                if checkout_default_branch_return_code != 0:
-                    print("\nError: Default branch does not exist\n")
-                    self.default_branch_not_found = True
+                    if checkout_default_branch_return_code != 0:
+                        print("\nError: Default branch does not exist\n")
+                        self.default_branch_not_found = True
+                    
+                    if checkout_branch_return_code != 0:
+                        print("\nError: Specified branch does not exist\n")
+                        self.specified_branch_not_found = True
                 
-                if checkout_branch_return_code != 0:
-                    print("\nError: Specified branch does not exist\n")
-                    self.specified_branch_not_found = True
-            
+            else:
+                self.no_branch = True
+        
         else:
-            if not self.branch_not_found:
+            if not self.branch_not_found and not self.no_branch:
                 self.default_branch = get_git_branch()
                 self.branch = self.default_branch
                 self.log = run_cmd_process(cmd_list=["git", "log", '--pretty=format:**%H##%ct##%aN##%s', "--raw", "--stat"])[0]
@@ -150,7 +160,7 @@ class Retrieve_Commit_History:
                 self.log = ""
                 self.n_commit_default_to_branch = None
 
-        if not self.branch_not_found:
+        if not self.branch_not_found and not self.no_branch:
             self.lines = self.log.split("**")
             self.headers = None
 
@@ -284,7 +294,7 @@ class Retrieve_Commit_History:
             A dictionary containing the commit history, contributors, number of commits and number of contributors
         """
 
-        if not self.branch_not_found:
+        if not self.branch_not_found and not self.no_branch:
             print("Retriving commit history...")
 
             if self.owner and self.repo:
@@ -420,9 +430,12 @@ class Retrieve_Commit_History:
 
         else:
             print("\nCommit history retreival failed\n")
-            if self.specified_branch_not_found and self.default_branch_not_found:
-                return {"error": "Default branch: {}\nSpecified branch: {} \nBoth do not exist".format(self.default_branch, self.branch)}
-            elif self.specified_branch_not_found:
-                return {"error": "Specified branch: {} \nDoes not exist".format(self.branch)}
+            if self.no_branch:
+                return {"error": "The repository has no branch"}
             else:
-                return {"error": "Default branch: {} \nDoes not exist".format(self.default_branch)}
+                if self.specified_branch_not_found and self.default_branch_not_found:
+                    return {"error": "Default branch: {}\nSpecified branch: {} \nBoth do not exist".format(self.default_branch, self.branch)}
+                elif self.specified_branch_not_found:
+                    return {"error": "Specified branch: {} \nDoes not exist".format(self.branch)}
+                else:
+                    return {"error": "Default branch: {} \nDoes not exist".format(self.default_branch)}
